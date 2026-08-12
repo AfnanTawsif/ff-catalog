@@ -1,7 +1,7 @@
 
 ## 🎮 Free Fire Catalog
 
-**The ultimate open source web-based catalog for Free Fire items – blazing fast, fully offline-capable, and built with developer-first optimization.**
+**Open source web-based catalog for Free Fire items – blazing fast, fully offline-capable, and built with developer-first optimization.**
 
 🔗 **Live Website:** [https://ff-catalog.netlify.app/](https://ff-catalog.netlify.app/)
 
@@ -11,27 +11,19 @@
 
 Free Fire Catalog is a modern, single-page web application that lets you search, filter, and browse thousands of Free Fire items (bundles, weapons, skins, emotes, and more).
 
-It consumes a compressed MessagePack database and loads item icons on-demand, providing a smooth, snappy experience even on low-end devices.
-
-The app is **100% client-side** – all processing, parsing, and caching happens in your browser, saving server resources and enabling **offline usage** after the first visit.
-
 ---
 
 ## 📊 Current Database Status
-
-> The database is updated automatically from the source repository.
-> 
-> *Latest version and item count are displayed inside the app's **Settings → App → Database version**.*
 
 | **Database Version** | **Total Items** |
 |----------------------|-----------------|
 | _Shown in-app_       | _Shown in-app_  |
 
-The app checks for a new database every 24 hours (if cached), and you can force a sync anytime using the **Sync** button.
+The app checks for a new database every 24 hours, and you can force a sync anytime using the **Sync** button from **Settings -> App**
 
 ---
 
-## 🚀 WebApp Overview – What Makes It Exceptional
+## 🚀 WebApp Overview
 
 - **🏎️ Blazing Performance**
   - Lazy-loads images only when they enter the viewport.
@@ -115,8 +107,6 @@ They are automatically fetched from the following sources:
 
 The database and icons are **updated regularly** – either when new items are added in the source repository or when I manually curate missing assets.
 
-Feel free to contribute by submitting new icons or database corrections (see the Contribution section).
-
 ---
 
 ## 🛠️ Development – Customize Your Own Version
@@ -142,11 +132,12 @@ ff-catalog/
 │   │   ├── sitemap.xml
 │   │   └── icons/                   # App icons (SVG, PNG)
 │   └── Online/                      # Dynamic files loaded via CDN
-│       ├── whats_new.json           # Changelog
+│       ├── whats_new.json           # Changelog for WebApp
 │       └── author.jpg               # Author avatar
 ├── PNG/                             # All item icons (PNG, named by item ID)
 ├── database.msgpack.gz               # Compressed database
 └── README.md                         # This file
+└── LICENSE                           # MIT License
 ```
 
 ### 3. Configuration – `script.js`
@@ -171,13 +162,13 @@ Update these to point to your own fork and CDN endpoints.
 
 ### 4. Updating Icons
 
-Place new icon PNGs in the `PNG/` folder, named with the item ID (e.g., `123456789.png`).
+Place new item icon PNGs in the `PNG/` folder, named with the item ID (e.g., `123456789.png`).
 
-If you need to generate app icons (for PWA), use [maskable.app](https://maskable.app/) to create `icon-192.png`, `icon-512.png`, etc., and place them in `WebApp/App/icons/`.
+If you need to generate app icons for the WebApp (PWA), use [maskable.app](https://maskable.app/) to create `icon-192.png`, `icon-512.png`, etc., and place them in `WebApp/App/icons/`.
 
 ### 5. Updating the Database
 
-The database is in MessagePack format (`.msgpack`), then gzipped (`.gz`).
+The database is in MessagePack format (`.msgpack`) for max speed, then gzipped (`.gz`) for faster downloads.
 
 To update: edit the JSON source, modify updated_on value, convert the final json to `.msgpack` using tools like [conventro.com](https://conventro.com/convert/json-to-msgpack), then compress with maximum GZIP.
 
@@ -250,6 +241,5 @@ This project is open source and available under the MIT License.
 - **Database & icons:** ShahGCreator
 - **Built with:** ❤️ and lots of caffeine.
 
-Enjoy browsing the catalog!
 
 If you find this useful, don’t forget to ⭐ star the repository.
