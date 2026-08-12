@@ -1,0 +1,26 @@
+[
+    {
+        "version": "v1.0.1",
+        "logs": [
+            "Added missing OB tag filters (OB01–OB25, OB27–OB54, excluding OB90)",
+            "Favorites toolbar now uses inline-flex and fit‑content width",
+            "Fixed modal image cleanup to avoid alt‑text flicker on close",
+            "Slightly darkened settings gear icon",
+            "Updated GitHub repository links and CDN paths to ff‑catalog"
+        ]
+    },
+    {
+        "version": "v1.0.0",
+        "logs": [
+            "Initial release after extensive internal testing and refinement",
+            "Full inventory database with 50+ item types",
+            "Advanced search by name, ID, description, or icon",
+            "Filter by type, rarity, and tag",
+            "Favorites system with import/export",
+            "Two display modes: pagination and infinite scroll",
+            "Item details modal with copy, download, and share",
+            "PWA support with offline caching",
+            "Customizable settings and dark theme"
+        ]
+    }
+]

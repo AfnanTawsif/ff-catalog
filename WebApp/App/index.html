@@ -1,0 +1,2473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Enhanced Metadata -->
+    <title>FREE FIRE CATALOG</title>
+    <meta name="description" content="Explore the ultimate Free Fire Catalog database. Search, filter, and view details for all Free Fire items including bundles, weapons, skins, and more." />
+    <meta name="keywords" content="Free Fire, FF Catalog, Free Fire Items, Free Fire Database, Garena Free Fire, Bundles, Skins" />
+    <meta name="author" content="AfnanTawsif" />
+    <meta name="theme-color" content="#0f0f0f" />
+
+    <!-- Open Graph / Social Media Meta Tags -->
+    <meta property="og:title" content="FREE FIRE Catalog" />
+    <meta property="og:description" content="Explore the ultimate Free Fire Catalog database. Search, filter, and view details for all Free Fire items." />
+    <meta property="og:type" content="website" />
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json" />
+
+    <!-- Apple Touch Icon for iOS -->
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon-192.png">
+
+    <!-- Preconnect to primary CDN for faster database & icon loading -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+    <link rel="dns-prefetch" href="https://api.github.com" />
+
+    <!-- Tab Icon (Favicon) -->
+    <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+
+    <style>
+        /* ----- Core Variables & Reset ----- */
+        :root {
+            --bg-color: #0f0f0f;
+            --card-bg: #1a1a1a;
+            --text-main: #ffffff;
+            --text-muted: #a0a0a0;
+            --primary: #4CAF50;
+            --border: #333333;
+            --glow: #a842ff;
+            --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+            --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+            --settings-header-bg: #141414;
+            --settings-body-bg: #1a1a1a;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Custom Scrollbar for entire website */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-color);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--glow);
+        }
+
+        /* ----- Header & Controls (Glassmorphism) ----- */
+        header {
+            background: rgba(20, 20, 20, 0.4);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            padding: 20px 20px 15px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            position: relative;
+            max-width: 1000px;
+        }
+
+        /* ----- ANIMATED PURPLE GRADIENT TITLE ----- */
+        header h1 {
+            font-size: clamp(18px, 2.8vw, 30px);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-align: center;
+            font-weight: 700;
+            transition: font-size 0.3s ease;
+            cursor: pointer;
+            user-select: none;
+
+            /* ---- PURPLE GRADIENT ANIMATION ---- */
+            background: linear-gradient(270deg, #a842ff, #7B2FBE, #E040FB, #a842ff);
+            background-size: 400% 100%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradientMove 4s ease-in-out infinite;
+            filter: drop-shadow(0 0 12px rgba(168, 66, 255, 0.25));
+        }
+
+        @keyframes gradientMove {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Header Buttons - scale with title */
+        .settings-btn,
+        .reload-btn {
+            position: absolute;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s var(--ease-out-back), background 0.3s ease;
+        }
+
+        .settings-btn {
+            left: 0;
+            color: var(--text-main);
+            padding: 6px;
+            animation: pulse-glow 2s infinite;
+        }
+        .settings-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: scale(1.1);
+        }
+        .settings-btn svg {
+            width: clamp(20px, 2.4vw, 28px);
+            height: clamp(20px, 2.4vw, 28px);
+            fill: #a848f0;
+            transition: transform 0.5s ease;
+        }
+        .settings-btn:hover svg {
+            transform: rotate(90deg);
+        }
+
+        .reload-btn {
+            right: 0;
+            width: clamp(34px, 3.4vw, 44px);
+            height: clamp(34px, 3.4vw, 44px);
+            padding: 4px;
+            border-radius: 50%;
+            transition: transform 0.3s var(--ease-out-back), background 0.3s ease;
+        }
+        .reload-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: scale(1.05);
+        }
+        .reload-btn:active {
+            transform: scale(0.92);
+        }
+        .reload-btn img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+            border-radius: 50%;
+        }
+
+        @keyframes pulse-glow {
+            0% { box-shadow: 0 0 0 0 rgba(168, 66, 255, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(168, 66, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(168, 66, 255, 0); }
+        }
+
+        .controls-wrapper {
+            width: 100%;
+            max-width: 850px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        /* ----- SEARCH WRAPPER with icon & clear button ----- */
+        .search-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .search-bar {
+            width: 100%;
+            padding: 10px 44px 10px 20px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            background: rgba(26, 26, 26, 0.8);
+            color: var(--text-main);
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
+        }
+        .search-bar:focus {
+            border-color: var(--glow);
+            box-shadow: 0 0 10px rgba(168, 66, 255, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .search-icon,
+        .search-clear {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            pointer-events: none;
+            color: var(--text-muted);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .search-icon svg {
+            width: 20px;
+            height: 20px;
+            fill: var(--text-muted);
+            opacity: 0.6;
+        }
+
+        .search-clear {
+            pointer-events: auto;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            border-radius: 50%;
+            transition: background 0.2s ease, transform 0.2s ease;
+            display: none;
+            padding: 0;
+        }
+        .search-clear:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-50%) scale(1.1);
+        }
+        .search-clear:active {
+            transform: translateY(-50%) scale(0.9);
+        }
+        .search-clear svg {
+            width: 18px;
+            height: 18px;
+            fill: var(--text-muted);
+        }
+
+        .filters-row {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: nowrap;
+            width: 100%;
+            align-items: stretch;
+        }
+
+        .filters-row select {
+            background: rgba(26, 26, 26, 0.8);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 8px 10px;
+            border-radius: 6px;
+            outline: none;
+            cursor: pointer;
+            font-size: 13px;
+            flex: 1 1 auto;
+            min-width: 0;
+            text-align: center;
+            text-align-last: center;
+            text-overflow: ellipsis;
+            transition: all 0.2s ease;
+        }
+        .filters-row select:hover {
+            border-color: var(--glow);
+            background: rgba(35, 35, 35, 0.9);
+        }
+
+        /* ----- FAVORITES TOGGLE BUTTON (in filter row) ----- */
+        .fav-toggle {
+            background: rgba(26, 26, 26, 0.8);
+            color: var(--text-muted);
+            border: 1px solid var(--glow);
+            padding: 8px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            flex: 0 0 auto;
+            min-width: 44px;
+            justify-content: center;
+            font-weight: 500;
+            line-height: 1;
+        }
+        .fav-toggle:hover {
+            border-color: var(--glow);
+            background: rgba(35, 35, 35, 0.9);
+            color: #fff;
+        }
+        .fav-toggle.active {
+            border-color: #FFD700; /* Yellow when active */
+            background: rgba(255, 215, 0, 0.1);
+            box-shadow: 0 0 16px rgba(255, 215, 0, 0.15);
+            color: #FFD700;
+        }
+        .fav-toggle #favStar {
+            font-size: 18px;
+            line-height: 1;
+            transition: transform 0.2s ease;
+        }
+        .fav-toggle.active #favStar {
+            transform: scale(1.1);
+        }
+        .fav-toggle #favCount {
+            font-size: 13px;
+            font-weight: 600;
+            min-width: 16px;
+            text-align: center;
+            color: inherit;
+            opacity: 0.7;
+        }
+        .fav-toggle.active #favCount {
+            opacity: 1;
+        }
+
+        /* ----- FAVORITES TOOLBAR (shown when active) ----- */
+        .fav-toolbar {
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px 20px;
+            background: rgba(26, 26, 26, 0.7);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            border-radius: 10px;
+            padding: 10px 18px;
+            margin: 10px auto 16px auto;
+            box-shadow: 0 4px 20px rgba(255, 215, 0, 0.06);
+            width: fit-content;
+            max-width: 100%;
+        }
+        .fav-toolbar.visible {
+            display: inline-flex;
+        }
+        .fav-toolbar-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 15px;
+            color: #fff;
+        }
+        .fav-toolbar-left .fav-icon {
+            font-size: 20px;
+        }
+        .fav-toolbar-left .fav-label {
+            font-weight: 600;
+        }
+        .fav-toolbar-left .fav-count-badge {
+            background: #FFD700;
+            color: #000;
+            font-weight: bold;
+            padding: 0 10px;
+            border-radius: 20px;
+            font-size: 13px;
+            line-height: 24px;
+            min-width: 24px;
+            text-align: center;
+        }
+        .fav-toolbar-right {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .fav-toolbar-right .action-btn-small {
+            background: rgba(255,255,255,0.05);
+            border-color: var(--border);
+            padding: 6px 14px;
+            font-size: 13px;
+        }
+        .fav-toolbar-right .action-btn-small:hover {
+            background: rgba(255,255,255,0.12);
+            border-color: var(--glow);
+        }
+        #favClearBtn:hover {
+            border-color: #ff6b6b !important;
+            background: rgba(255, 107, 107, 0.15) !important;
+            color: #ff6b6b;
+        }
+
+        /* Empty state inside the grid when favorites are empty */
+        .fav-empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+        .fav-empty-state .big-icon {
+            font-size: 48px;
+            display: block;
+            margin-bottom: 16px;
+        }
+        .fav-empty-state h3 {
+            color: #fff;
+            font-size: 20px;
+            margin-bottom: 8px;
+        }
+        .fav-empty-state p {
+            font-size: 14px;
+            max-width: 400px;
+            margin: 0 auto 16px;
+            line-height: 1.6;
+        }
+        .fav-empty-state .action-btn-small {
+            font-size: 14px;
+            padding: 8px 20px;
+            display: inline-flex;
+            margin: 0 auto;
+        }
+
+        /* Empty state for general search (question mark) */
+        .empty-search-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+        .empty-search-state .empty-icon {
+            font-size: 64px;
+            display: block;
+            margin-bottom: 16px;
+            opacity: 0.5;
+            line-height: 1;
+        }
+        .empty-search-state h3 {
+            color: #fff;
+            font-size: 20px;
+            margin-bottom: 6px;
+        }
+        .empty-search-state p {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        /* ----- STAR BUTTON ON CARDS AND MODAL (pure star, no background) ----- */
+        .star-btn {
+            position: absolute;
+            top: 2px;
+            right: 2px; /* top-right corner */
+            background: transparent !important;
+            backdrop-filter: none !important;
+            border: none;
+            width: auto;
+            height: auto;
+            font-size: 16px;
+            line-height: 1;
+            color: #aaa;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            z-index: 5;
+            padding: 0;
+            border-radius: 0;
+        }
+        .star-btn:hover {
+            transform: scale(1.2);
+            color: #fff;
+        }
+        .star-btn.favorited {
+            color: #FFD700;
+            text-shadow: 0 0 12px rgba(255, 215, 0, 0.6);
+        }
+        .star-btn.modal-star {
+            font-size: 20px;
+            top: 4px;
+            right: 4px;
+        }
+
+        /* ----- Main Content & Grid ----- */
+        main {
+            max-width: 1000px;
+            width: 100%;
+            margin: 20px auto;
+            padding: 0 20px 100px 20px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 12px;
+            min-height: 400px;
+            align-content: start;
+        }
+
+        /* ----- Loading Overlay ----- */
+        .loading-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+            background: rgba(15, 15, 15, 0.9);
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            backdrop-filter: blur(8px);
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .loading-container.active {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        .main-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--border);
+            border-top-color: var(--glow);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: var(--text-muted);
+            font-size: 16px;
+            letter-spacing: 1px;
+            animation: pulse 1.5s infinite;
+            text-align: center;
+            padding: 0 20px;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* ----- Item Cards & Steel Loader (UPDATED: bigger images) ----- */
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 4px 3px 4px;
+            text-align: center;
+            cursor: pointer;
+            position: relative;
+            transition: transform 0.25s var(--ease-smooth), box-shadow 0.25s ease, border-color 0.25s ease;
+            overflow: hidden;
+            content-visibility: auto;
+            contain-intrinsic-size: 100px 130px;
+            animation: cardAppear 0.3s var(--ease-smooth) forwards;
+        }
+        @keyframes cardAppear {
+            from { opacity: 0; transform: translateY(10px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .card:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 8px 20px rgba(168, 66, 255, 0.25);
+            border-color: var(--glow);
+            will-change: transform;
+        }
+        .card:active {
+            transform: scale(0.95);
+            transition: transform 0.1s ease;
+        }
+
+        /* Image container: fills card width with tiny margin, square aspect */
+        .img-container {
+            width: calc(100% - 6px);
+            aspect-ratio: 1 / 1;
+            height: auto;
+            max-width: none;
+            margin: 3px auto 4px;
+            position: relative;
+            border-radius: 6px;
+            background: linear-gradient(135deg, #1c1c1c 25%, #3a3a3a 50%, #1c1c1c 75%);
+            background-size: 400% 100%;
+            animation: steelShine 2s infinite cubic-bezier(0.4, 0.0, 0.2, 1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            border: 1px solid #2a2a2a;
+        }
+        @keyframes steelShine {
+            0% { background-position: 100% 50%; }
+            100% { background-position: -100% 50%; }
+        }
+        .img-container.paused {
+            animation-play-state: paused;
+        }
+        .img-container:has(img.loaded) {
+            animation-play-state: paused;
+        }
+
+        .img-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            opacity: 0;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            position: relative;
+            z-index: 1;
+            padding: 2px;
+        }
+        .img-container img.loaded {
+            opacity: 1;
+        }
+        .card:hover .img-container img.loaded {
+            transform: scale(1.06);
+        }
+
+        .card h3 {
+            font-size: 12px;
+            font-weight: 500;
+            margin-bottom: 0px;
+            line-height: 1.3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--text-main);
+            padding: 0 2px;
+        }
+        .card small {
+            font-size: 10px;
+            color: var(--text-muted);
+            display: block;
+            line-height: 1.3;
+            padding: 0 2px 2px;
+        }
+
+        .copy-tick {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            color: var(--primary);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 44px;
+            font-weight: bold;
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.5);
+            transition: opacity 0.25s ease, transform 0.3s var(--ease-out-back);
+            border-radius: 8px;
+            z-index: 5;
+        }
+        .copy-tick.show {
+            opacity: 1;
+            transform: scale(1);
+        }
+        .copy-tick.blue-tick {
+            color: #2196F3;
+        }
+
+        /* ----- Toast Component ----- */
+        .toast-notification {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #252525;
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: 1px solid var(--glow);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
+            font-size: 14px;
+            z-index: 1000;
+            opacity: 0;
+            transition: transform 0.35s var(--ease-out-back), opacity 0.3s ease;
+            pointer-events: none;
+            text-align: center;
+            max-width: 90%;
+        }
+        .toast-notification.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        /* ----- Floating Slider Pagination ----- */
+        .pagination-container {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 50;
+            width: auto;
+            max-width: 95vw;
+            display: none;
+        }
+
+        .pagination-glass {
+            display: flex;
+            align-items: center;
+            background: rgba(20, 20, 20, 0.4);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 30px;
+            padding: 6px 14px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+            gap: 12px;
+            height: 52px;
+        }
+
+        .page-static-part {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-muted);
+            font-size: 13px;
+            height: 100%;
+        }
+
+        .search-page-btn {
+            background: transparent;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            transition: transform 0.2s ease, color 0.2s ease;
+        }
+        .search-page-btn:hover {
+            color: var(--glow);
+            transform: scale(1.1);
+        }
+        .search-page-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        .jump-input-box {
+            display: none;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--glow);
+            color: #fff;
+            width: 40px;
+            height: 30px;
+            border-radius: 4px;
+            text-align: center;
+            outline: none;
+            padding: 0;
+            margin: 0;
+            font-size: 13px;
+            -moz-appearance: textfield;
+        }
+        .jump-input-box::-webkit-outer-spin-button,
+        .jump-input-box::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .total-pages-text {
+            font-weight: bold;
+            color: #fff;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+        }
+        .vertical-divider {
+            width: 1px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .page-scroll-part {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            height: 100%;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #pageNumbers {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            overflow-x: auto;
+            max-width: 250px;
+            padding-top: 4px;
+            padding-bottom: 2px;
+            scroll-behavior: smooth;
+            cursor: grab;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        #pageNumbers::-webkit-scrollbar {
+            display: none;
+            width: 0;
+            height: 0;
+        }
+        #pageNumbers:active {
+            cursor: grabbing;
+        }
+
+        .page-btn {
+            background: transparent;
+            color: #aaa;
+            border: 1px solid transparent;
+            height: 30px;
+            padding: 0 12px;
+            cursor: pointer;
+            font-size: 13px;
+            border-radius: 15px;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            user-select: none;
+            line-height: 1;
+        }
+        .page-btn:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .page-btn:active {
+            transform: scale(0.92);
+        }
+        .page-btn.active {
+            background: #fff;
+            color: #0f0f0f;
+            font-weight: bold;
+        }
+
+        .nav-btn {
+            padding: 0 10px;
+            color: #fff;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* ----- Modals ----- */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.82);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            padding: 5vh 20px;
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 0.25s ease, visibility 0.25s ease;
+        }
+        .modal.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+            max-height: 100%;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(168, 66, 255, 0.15);
+            transform: scale(1) translateY(0);
+            transition: transform 0.25s var(--ease-out-back);
+        }
+        .modal.hidden .modal-content {
+            transform: scale(0.92) translateY(15px);
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-muted);
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            line-height: 1;
+        }
+        .close-btn:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(1.1);
+        }
+        .close-btn:active {
+            transform: scale(0.9);
+        }
+
+        .close-btn-float {
+            float: right;
+            width: 32px;
+            height: 32px;
+            margin-left: 12px;
+            margin-bottom: 4px;
+        }
+
+        .item-modal-content {
+            max-width: 520px;
+        }
+        .item-modal-top {
+            display: flex;
+            gap: 15px;
+            background: #1e1e1e;
+            padding: 20px 12px 12px 12px;
+            position: relative;
+        }
+
+        .item-modal-left {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            width: 110px;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        /* ----- MODAL IMAGE WRAPPER WITH STEEL ANIMATION ----- */
+        .item-modal-left .img-wrapper {
+            width: 110px;
+            height: 110px;
+            background: linear-gradient(135deg, #1c1c1c 25%, #3a3a3a 50%, #1c1c1c 75%);
+            background-size: 400% 100%;
+            animation: steelShine 2s infinite cubic-bezier(0.4, 0.0, 0.2, 1);
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 5px;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        .item-modal-left .img-wrapper:has(img.loaded) {
+            animation-play-state: paused;
+        }
+
+        .item-modal-left .img-wrapper img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .item-modal-left .img-wrapper img.loaded {
+            opacity: 1;
+        }
+
+        .action-btns-row {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .item-modal-right {
+            flex-grow: 1;
+            display: block;
+            overflow: visible;
+            min-width: 0;
+        }
+        .item-modal-right h2 {
+            font-size: 20px;
+            margin-bottom: 0px;
+            color: #fff;
+            line-height: 1;
+            word-break: break-word;
+        }
+
+        .modal-icon-name {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 1px;
+            margin-bottom: 12px;
+            font-style: italic;
+            overflow-x: auto;
+            white-space: nowrap;
+            padding-bottom: 6px;
+            display: block;
+            scrollbar-width: thin;
+            scrollbar-color: var(--glow) rgba(255, 255, 255, 0.05);
+        }
+        .modal-icon-name::-webkit-scrollbar {
+            height: 5px;
+        }
+        .modal-icon-name::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }
+        .modal-icon-name::-webkit-scrollbar-thumb {
+            background: var(--glow);
+            border-radius: 4px;
+        }
+        .modal-icon-name::-webkit-scrollbar-thumb:hover {
+            background: #c26eff;
+        }
+
+        .item-modal-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 0;
+        }
+        .item-modal-bottom {
+            padding: 20px 12px;
+            overflow-y: auto;
+            background: var(--card-bg);
+        }
+        .desc-box h3 {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .desc-box p {
+            font-size: 14px;
+            color: #ccc;
+        }
+
+        /* ----- Specifically target the item modal's close button ----- */
+        .item-modal-content .close-btn {
+            right: 12px;   /* aligns with the reduced padding */
+            top: 20px;
+        }
+
+        .badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .badge {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-block;
+            color: #fff;
+        }
+        .badge-id { background: #333; }
+        .badge-type { background: #1976D2; }
+        .badge-tag { background: #00796B; }
+
+        .rare-NONE { background: #e0e0e0; color: #000; }
+        .rare-WHITE { background: #e0e0e0; color: #000; }
+        .rare-GREEN { background: #388E3C; }
+        .rare-BLUE { background: #1976D2; }
+        .rare-PURPLE { background: #7B1FA2; }
+        .rare-PURPLE_PLUS { background: #E040FB; color: #000; }
+        .rare-ORANGE { background: #F57C00; }
+        .rare-ORANGE_PLUS { background: #FFB74D; color: #000; }
+        .rare-RED { background: #D32F2F; }
+
+        /* ----- Custom Settings CSS with Tabs ----- */
+        .settings-content {
+            max-width: 420px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .settings-header {
+            padding: 25px 20px 18px 20px;
+            text-align: center;
+            position: relative;
+            background: var(--settings-header-bg);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            flex-shrink: 0;
+        }
+        .settings-header h2 {
+            font-size: 20px;
+            color: #fff;
+            margin: 0 0 20px 0;
+            line-height: 1;
+        }
+
+        .settings-tabs {
+            display: flex;
+            gap: 16px;
+            position: relative;
+            z-index: 10;
+            flex-shrink: 0;
+        }
+
+        .tab-btn {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid transparent;
+            border-radius: 30px;
+            color: var(--text-muted);
+            font-size: 15px;
+            font-weight: 600;
+            padding: 12px 5px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .tab-btn:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .tab-btn.active {
+            color: #fff;
+            background: rgba(168, 66, 255, 0.2);
+            border-color: rgba(168, 66, 255, 0.4);
+            box-shadow: 0 4px 15px rgba(168, 66, 255, 0.15);
+        }
+
+        .settings-body {
+            padding: 25px 20px 20px 20px;
+            overflow-y: auto;
+            flex-grow: 1;
+            background: var(--settings-body-bg);
+            max-height: 60vh;
+        }
+
+        /* NEW: Settings Footer (non-scrollable, same as header) */
+        .settings-footer {
+            padding: 10px 20px;
+            text-align: center;
+            background: var(--settings-header-bg);
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            flex-shrink: 0;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        .settings-footer strong {
+            color: var(--text-main);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeInTab 0.3s ease;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        @keyframes fadeInTab {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .settings-section {
+            margin-bottom: 25px;
+        }
+        .settings-section:last-child {
+            margin-bottom: 0;
+        }
+        .settings-section h3 {
+            font-size: 16px;
+            text-transform: uppercase;
+            color: var(--glow);
+            margin-bottom: 15px;
+            letter-spacing: 1px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 6px;
+        }
+
+        .settings-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .settings-row:last-child {
+            border-bottom: none;
+        }
+        .settings-row.no-divider {
+            border-bottom: none;
+            padding-bottom: 4px;
+        }
+        .settings-row.compact {
+            padding-top: 4px;
+        }
+
+        .settings-label {
+            font-size: 14px;
+            color: #ddd;
+            display: flex;
+            align-items: center;
+        }
+
+        .action-btn-small {
+            background: #252525;
+            border: 1px solid var(--border);
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+        .action-btn-small:hover:not(:disabled) {
+            background: #333;
+            border-color: #555;
+            transform: translateY(-1px);
+        }
+        .action-btn-small:active:not(:disabled) {
+            transform: translateY(0);
+        }
+        .action-btn-small:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .action-btn-small svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        .icon-only-btn {
+            width: 25px;
+            height: 25px;
+            justify-content: center;
+            padding: 0;
+        }
+
+        .pill {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: #fff;
+            margin-left: 8px;
+            line-height: 1;
+            vertical-align: middle;
+        }
+        .pill-green {
+            background-color: #2e7d32;
+            border: 1px solid #4CAF50;
+        }
+        .pill-blue {
+            background-color: #1565c0;
+            border: 1px solid #2196F3;
+        }
+
+        .range-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            padding: 15px 0 8px;
+        }
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #ccc;
+            cursor: pointer;
+        }
+        .checkbox-label input {
+            cursor: pointer;
+            accent-color: var(--glow);
+        }
+
+        .select-small {
+            background: #252525;
+            color: #fff;
+            border: 1px solid var(--border);
+            padding: 6px;
+            border-radius: 6px;
+            font-size: 12px;
+            outline: none;
+        }
+
+        .dl-dropdown-wrapper {
+            position: relative;
+        }
+        .dl-dropdown-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 5px;
+            background: #252525;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-8px) scale(0.95);
+            display: flex;
+            flex-direction: column;
+            min-width: 120px;
+            z-index: 20;
+            transition: opacity 0.2s ease, transform 0.2s var(--ease-out-back);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        }
+        .dl-dropdown-menu.show {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0) scale(1);
+        }
+        .dl-dropdown-item {
+            background: none;
+            border: none;
+            padding: 8px 12px;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            text-align: left;
+            transition: background 0.2s ease;
+        }
+        .dl-dropdown-item:hover {
+            background: #333;
+        }
+        .dl-dropdown-item svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+            flex-shrink: 0;
+        }
+
+        /* ----- Report Modal (matching settings header style) ----- */
+        .report-content {
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            max-height: 90vh;
+        }
+
+        .report-header {
+            background: var(--settings-header-bg);
+            padding: 20px 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            flex-shrink: 0;
+            position: relative;
+            text-align: center;
+        }
+
+        .report-header h2 {
+            font-size: 20px;
+            color: #fff;
+            margin: 0;
+            line-height: 1;
+        }
+
+        .report-header .close-btn {
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-muted);
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            line-height: 1;
+        }
+        .report-header .close-btn:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateY(-50%) scale(1.1);
+        }
+        .report-header .close-btn:active {
+            transform: translateY(-50%) scale(0.9);
+        }
+
+        .report-body {
+            padding: 20px 24px 24px;
+            overflow-y: auto;
+            flex-grow: 1;
+            max-height: 60vh;
+            background: var(--card-bg);
+        }
+
+        .report-text h3.report-title {
+            font-size: 16px;
+            color: var(--glow);
+            margin: 20px 0 10px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .report-text h3.report-title:first-child {
+            margin-top: 0;
+        }
+        .report-text h4 {
+            font-size: 14px;
+            color: #fff;
+            margin: 10px 0 8px;
+        }
+        .report-text ul {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            list-style: none;
+            margin-bottom: 15px;
+        }
+        .report-text li {
+            background: #2a2a2a;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #ccc;
+            border: 1px solid var(--border);
+        }
+        .report-text p {
+            font-size: 13px;
+            color: #aaa;
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+
+        .summary-section {
+            margin-top: 10px;
+        }
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 4px;
+            border-bottom: 1px solid #333;
+            font-size: 13px;
+        }
+        .summary-row:last-child {
+            border-bottom: none;
+        }
+
+        .copyable-box {
+            position: relative;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-radius: 4px;
+        }
+        .copyable-box:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+        .copyable-box.copied::after {
+            content: 'Copied!';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(76, 175, 80, 0.95);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 13px;
+            border-radius: inherit;
+            z-index: 10;
+        }
+
+        .limit-input-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .limit-input {
+            width: 52px;
+            background: #252525;
+            color: #fff;
+            border: 1px solid var(--border);
+            padding: 4px;
+            border-radius: 4px;
+            font-size: 13px;
+            text-align: center;
+            outline: none;
+        }
+        .limit-input:focus {
+            border-color: var(--glow);
+        }
+        .limit-unit {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-right: 5px;
+        }
+
+        .storage-bar-wrapper {
+            position: relative;
+            flex-grow: 1;
+            height: 24px;
+            background: #252525;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .storage-bar-fill {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            width: 0%;
+            transition: width 0.3s ease, background-color 0.3s ease;
+            z-index: 1;
+        }
+        .storage-bar-fill.warning {
+            background: linear-gradient(90deg, #F57C00, #FF9800);
+        }
+        .storage-bar-fill.danger {
+            background: linear-gradient(90deg, #D32F2F, #F44336);
+        }
+
+        .storage-bar-text {
+            position: relative;
+            z-index: 2;
+            font-size: 11px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.8);
+        }
+
+        /* ----- Infinite Scroll Sentinel ----- */
+        .infinite-sentinel {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 20px 0;
+            color: var(--text-muted);
+            font-size: 13px;
+            letter-spacing: 0.5px;
+        }
+        .infinite-sentinel .spinner-small {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-top-color: var(--glow);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        .infinite-sentinel.done {
+            color: var(--text-muted);
+            opacity: 0.5;
+            font-size: 12px;
+        }
+
+        /* ----- CONTACT TAB - Profile Design ----- */
+        .profile-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px 0 4px 0;
+            width: 100%;
+        }
+
+        .profile-image-wrapper {
+            position: relative;
+            width: 110px;
+            height: 110px;
+            margin-bottom: 16px;
+        }
+
+        .profile-image-frame {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 3px solid var(--glow);
+            box-shadow: 0 0 30px rgba(168, 66, 255, 0.25);
+            background: #1a1a1a;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .profile-image-frame img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+        .profile-image-frame img.loaded {
+            opacity: 1;
+        }
+
+        .profile-loader {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(20, 20, 20, 0.7);
+            border-radius: 50%;
+            transition: opacity 0.3s ease;
+            z-index: 2;
+        }
+        .profile-loader.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .profile-loader .spinner {
+            width: 36px;
+            height: 36px;
+            border: 3px solid var(--border);
+            border-top-color: var(--glow);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        .profile-name {
+            font-size: 22px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 2px;
+            letter-spacing: 0.5px;
+            text-align: center;
+        }
+
+        .profile-name .at-symbol {
+            color: var(--glow);
+        }
+
+        .profile-github {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 18px;
+            text-align: center;
+            letter-spacing: 0.3px;
+            opacity: 0.7;
+        }
+
+        .profile-reachout {
+            font-size: 18px;
+            font-weight: 600;
+            color: #ddd;
+            margin-bottom: 14px;
+            text-align: center;
+            letter-spacing: 0.5px;
+        }
+
+        .profile-buttons {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+            margin-top: 4px;
+        }
+
+        .profile-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: #252525;
+            border: 1px solid var(--border);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            text-decoration: none;
+            line-height: 1.4;
+            min-width: 110px;
+        }
+
+        .profile-btn:hover {
+            background: #333;
+            border-color: var(--glow);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(168, 66, 255, 0.15);
+        }
+        .profile-btn:active {
+            transform: translateY(0);
+        }
+        .profile-btn svg {
+            width: 22px;
+            height: 22px;
+            fill: currentColor;
+            flex-shrink: 0;
+        }
+        .profile-btn.fb:hover {
+            border-color: #1877F2;
+            box-shadow: 0 6px 20px rgba(24, 119, 242, 0.25);
+        }
+        .profile-btn.ig:hover {
+            border-color: #E4405F;
+            box-shadow: 0 6px 20px rgba(228, 64, 95, 0.25);
+        }
+        .profile-btn.email:hover {
+            border-color: #EA4335;
+            box-shadow: 0 6px 20px rgba(234, 67, 53, 0.25);
+        }
+
+        /* What's New modal - version log styles */
+        .whatsnew-version {
+            margin-bottom: 20px;
+            border-left: 2px solid var(--glow);
+            padding-left: 14px;
+        }
+        .whatsnew-version h3 {
+            color: var(--glow);
+            font-size: 15px;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+        .whatsnew-version ul {
+            display: block;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .whatsnew-version ul li {
+            display: list-item;   /* ensures block-level */
+            padding: 3px 0 3px 18px;
+            position: relative;
+            font-size: 13px;
+            color: #ccc;
+            line-height: 1.5;
+            background: none;
+            border: none;
+        }
+        .whatsnew-version ul li::before {
+            content: "•";
+            position: absolute;
+            left: 2px;
+            color: var(--glow);
+            font-weight: bold;
+        }
+        .whatsnew-loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            padding: 40px 0;
+        }
+        .whatsnew-loading .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--border);
+            border-top-color: var(--glow);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        .whatsnew-loading p {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+        .whatsnew-error {
+            color: #ff6b6b;
+            text-align: center;
+            padding: 20px 0;
+            font-size: 14px;
+        }
+
+        /* ----- Responsive / Widescreen ----- */
+        @media (min-width: 1200px) {
+            .header-top { max-width: 1000px; }
+            main { max-width: 1000px; padding: 0 20px 100px 20px; }
+            .grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 12px; }
+            .img-container { width: calc(100% - 6px); aspect-ratio: 1 / 1; }
+            .controls-wrapper { max-width: 850px; }
+        }
+
+        @media (min-width: 1600px) {
+            .header-top { max-width: 1000px; }
+            main { max-width: 1000px; padding: 0 20px 100px 20px; }
+            .grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 12px; }
+            .img-container { width: calc(100% - 6px); aspect-ratio: 1 / 1; }
+            .controls-wrapper { max-width: 850px; }
+            header h1 { font-size: 30px; }
+            .settings-btn svg { width: 28px; height: 28px; }
+            .reload-btn { width: 44px; height: 44px; }
+        }
+
+        @media (max-width: 640px) {
+            .grid { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; }
+            .img-container { width: calc(100% - 4px); aspect-ratio: 1 / 1; margin: 2px auto 3px; border-radius: 4px; }
+            .img-container img { padding: 1px; }
+            .card { padding: 3px 2px 3px; contain-intrinsic-size: 80px 110px; }
+            .card h3 { font-size: 13px; }
+            .card small { font-size: 11px; }
+            .filters-row select { font-size: 12px; padding: 6px; }
+            .filters-row .fav-toggle { font-size: 12px; padding: 6px; } /* Match select */
+            .filters-row .fav-toggle #favStar { font-size: 16px; }
+            .fav-toolbar { flex-direction: column; align-items: stretch; gap: 10px; text-align: center; }
+            .fav-toolbar-right { justify-content: center; }
+            header h1 { font-size: 18px; }
+            .settings-btn { left: 10px; padding: 6px; }
+            .settings-btn svg { width: 20px; height: 20px; }
+            .reload-btn { right: 10px; width: 34px; height: 34px; }
+            .page-btn { height: 26px; padding: 0 10px; font-size: 12px; }
+            .search-page-btn { width: 26px; height: 26px; }
+            #pageNumbers { max-width: 150px; }
+            .item-modal-top { flex-direction: row; align-items: flex-start; text-align: left; }
+            .badges { justify-content: flex-start; }
+            .pill { margin-left: 4px; padding: 2px 6px; font-size: 10px; }
+            .range-options { gap: 12px; }
+            .settings-content { max-width: 100%; }
+            .controls-wrapper { max-width: 100%; }
+            .header-top { max-width: 100%; }
+            main { max-width: 100%; padding: 0 12px 100px 12px; }
+            .item-modal-content { max-width: 100%; }
+            .profile-image-wrapper { width: 100px; height: 100px; }
+            .profile-name { font-size: 22px; }
+            .profile-reachout { font-size: 18px; }
+            .profile-btn { padding: 10px 20px; font-size: 15px; min-width: 110px; }
+            .profile-btn svg { width: 18px; height: 18px; }
+            .profile-buttons { gap: 12px; }
+        }
+
+        @media (max-width: 420px) {
+            .profile-btn { padding: 8px 14px; font-size: 13px; min-width: 90px; gap: 6px; }
+            .profile-btn svg { width: 16px; height: 16px; }
+            .profile-image-wrapper { width: 80px; height: 80px; }
+            .profile-name { font-size: 18px; }
+            .profile-reachout { font-size: 16px; }
+            .img-container { width: calc(100% - 4px); aspect-ratio: 1 / 1; margin: 2px auto 2px; }
+            .card { padding: 2px 2px 2px; contain-intrinsic-size: 70px 100px; }
+            .card h3 { font-size: 12px; }
+            .card small { font-size: 10px; }
+            .filters-row .fav-toggle { font-size: 12px; padding: 6px; min-width: 30px; }
+            .filters-row .fav-toggle #favStar { font-size: 14px; }
+        }
+
+        /* Additional spacing for Settings title to tabs */
+        .settings-header .title-spacer {
+            margin-bottom: 18px;
+        }
+
+        /* Home button label (tooltip) */
+        .reload-btn[title]:hover::after {
+            content: attr(title);
+            position: absolute;
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.85);
+            color: #fff;
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 4px;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 20;
+            border: 1px solid var(--border);
+        }
+
+        /* ----- Settings Bubble & Inward Pulse Effects ----- */
+        @keyframes pulse-inward-long {
+            0% { box-shadow: 0 0 0 300px rgba(168, 66, 255, 0); }
+            40% { box-shadow: 0 0 0 120px rgba(168, 66, 255, 0.2); }
+            100% { box-shadow: 0 0 0 0 rgba(168, 66, 255, 0.9); }
+        }
+
+        .settings-btn.pulse-inward {
+            animation: pulse-inward-long 0.8s ease-in infinite !important;
+        }
+
+        .settings-bubble {
+            position: absolute;
+            top: 50px;
+            left: 0;
+            background: var(--glow);
+            color: #fff;
+            padding: 8px 30px 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(168, 66, 255, 0.4);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s var(--ease-out-back);
+            z-index: 100;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        .settings-bubble.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        .settings-bubble::before {
+            content: '';
+            position: absolute;
+            top: -7px;
+            left: 19px;
+            transform: translateX(-50%);
+            border-left: 7px solid transparent;
+            border-right: 7px solid transparent;
+            border-bottom: 7px solid var(--glow);
+        }
+
+        .settings-bubble-close {
+            position: absolute;
+            top: 50%;
+            right: 6px;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.2);
+            border: none;
+            color: #fff;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            line-height: 1;
+            transition: background 0.2s;
+        }
+        .settings-bubble-close:hover {
+            background: rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== HEADER ===== -->
+    <header>
+        <div class="header-top">
+            <button id="openSettings" class="settings-btn" title="Settings">
+                <svg viewBox="0 0 24 24" fill="#9b3fe8"><g transform="translate(12, 12) scale(1.3) translate(-12, -12)"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></g></svg>
+            </button>
+
+            <div id="settingsBubble" class="settings-bubble">
+                Click here for more settings
+                <button id="settingsBubbleClose" class="settings-bubble-close">&times;</button>
+            </div>
+
+            <h1 id="mainTitle" title="Go to Home">FREE FIRE CATALOG</h1>
+
+            <button id="reloadBtn" class="reload-btn" title="Go to Home">
+                <img src="icons/icon.svg" alt="Home" id="homeIcon" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2240%22 fill=%22none%22 stroke=%22%23a842ff%22 stroke-width=%2210%22/></svg>'">
+            </button>
+        </div>
+
+        <div class="controls-wrapper">
+            <div class="search-wrapper">
+                <input type="text" id="searchInput" class="search-bar" placeholder="Search item..." autocomplete="off" />
+                <div class="search-icon" id="searchIcon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                </div>
+                <button class="search-clear" id="searchClear" aria-label="Clear search">
+                    <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                </button>
+            </div>
+
+            <div class="filters-row">
+                <select id="typeFilter">
+                    <option value="">All Types</option>
+                    <option value="Bundles">Bundles</option> <option value="Top">Tops</option>
+                    <option value="Bottom">Bottoms</option> <option value="Shoe">Shoes</option>
+                    <option value="Head">Heads</option> <option value="Mask">Masks</option>
+                    <option value="Facepaint">Facepaints</option> <option value="" disabled="">──────</option>
+                    <option value="Weapon Skins">Weapon Skins</option> <option value="Gloo Walls">Gloo Walls</option>
+                    <option value="Fist Skins">Fist Skins</option> <option value="Grenade Skin">Grenade Skins</option>
+                    <option value="Final Shot">Final Shots</option> <option value="Finishing Move">Finishing Moves</option>
+                    <option value="Posture">Postures</option> <option value="Weapon Crates">Weapon Crates</option>
+                    <option value="" disabled="">──────</option> <option value="Emote">Emotes</option>
+                    <option value="Super Emote">Super Emotes</option> <option value="Arrival Animation">Arrival Animations</option>
+                    <option value="Look Changer">Look Changers</option> <option value="Vehicle Skins">Vehicle Skins</option>
+                    <option value="Loot Box">Loot Boxes</option> <option value="Bag Skins">Bag Skins</option>
+                    <option value="Parachute">Parachutes</option> <option value="Skyboard">Skyboards</option>
+                    <option value="Skywings">Skywings</option> <option value="Hyper Book">Hyper Books</option>
+                    <option value="" disabled="">──────</option> <option value="Banners">Banners</option>
+                    <option value="Avatars">Avatars</option> <option value="Profile Pin">Profile Pins</option>
+                    <option value="Battle Card">Battle Cards</option> <option value="Skill Skins">Skill Skins</option>
+                    <option value="Music">Musics</option> <option value="Voice Packs">Voice Packs</option>
+                    <option value="Photo Frame">Photo Frames</option> <option value="Avatar Frame">Avatar Frames</option>
+                    <option value="Photo Pose">Photo Poses</option> <option value="Sticker">Stickers</option>
+                    <option value="Titles">Titles</option> <option value="" disabled="">──────</option>
+                    <option value="Characters">Characters</option> <option value="Pets">Pets</option>
+                    <option value="Pet Skill">Pet Skills</option> <option value="Pet Skin">Pet Skins</option>
+                    <option value="Pet Emote">Pet Emotes</option> <option value="" disabled="">──────</option>
+                    <option value="Bundle Create">Bundle Creates</option> <option value="Exchange Tokens">Exchange Tokens</option>
+                    <option value="Loot Crates">Loot Crates</option> <option value="Choice Crates">Choice Crates</option>
+                    <option value="Vouchers">Vouchers</option>
+                </select>
+
+                <select id="rareFilter">
+                    <option value="">All Rarity</option>
+                    <option value="NONE">⬜ NONE</option>
+                    <option value="WHITE">⚪ COMMON</option> <option value="GREEN">🟩 UNCOMMON</option>
+                    <option value="BLUE">🟦 RARE</option> <option value="PURPLE">🟪 EPIC</option>
+                    <option value="PURPLE_PLUS">🟣 EPIC++</option> <option value="ORANGE">🟧 MYTHIC</option>
+                    <option value="ORANGE_PLUS">🟠 MYTHIC++</option> <option value="RED">🟥 ARTIFACT</option>
+                </select>
+
+                <select id="tagFilter">
+                    <option value="">All Tags</option>
+                    <option value="OB54">OB54</option>
+                    <option value="OB53">OB53</option>
+                    <option value="OB52">OB52</option>
+                    <option value="OB51">OB51</option>
+                    <option value="OB50">OB50</option>
+                    <option value="OB49">OB49</option>
+                    <option value="OB48">OB48</option>
+                    <option value="OB47">OB47</option>
+                    <option value="OB46">OB46</option>
+                    <option value="OB45">OB45</option>
+                    <option value="OB44">OB44</option>
+                    <option value="OB43">OB43</option>
+                    <option value="OB42">OB42</option>
+                    <option value="OB41">OB41</option>
+                    <option value="OB40">OB40</option>
+                    <option value="OB39">OB39</option>
+                    <option value="OB38">OB38</option>
+                    <option value="OB37">OB37</option>
+                    <option value="OB36">OB36</option>
+                    <option value="OB35">OB35</option>
+                    <option value="OB34">OB34</option>
+                    <option value="OB33">OB33</option>
+                    <option value="OB32">OB32</option>
+                    <option value="OB31">OB31</option>
+                    <option value="OB30">OB30</option>
+                    <option value="OB29">OB29</option>
+                    <option value="OB28">OB28</option>
+                    <option value="OB27">OB27</option>
+                    <option value="OB26">OB26</option>
+                    <option value="OB25">OB25</option>
+                    <option value="OB24">OB24</option>
+                    <option value="OB23">OB23</option>
+                    <option value="OB22">OB22</option>
+                    <option value="OB21">OB21</option>
+                    <option value="OB20">OB20</option>
+                    <option value="OB19">OB19</option>
+                    <option value="OB18">OB18</option>
+                    <option value="OB17">OB17</option>
+                    <option value="OB16">OB16</option>
+                    <option value="OB15">OB15</option>
+                    <option value="OB14">OB14</option>
+                    <option value="OB13">OB13</option>
+                    <option value="OB10">OB10</option>
+                    <option value="OB09">OB09</option>
+                    <option value="OB08">OB08</option>
+                    <option value="OB07">OB07</option>
+                    <option value="OB06">OB06</option>
+                    <option value="OB05">OB05</option>
+                    <option value="OB02">OB02</option>
+                    <option value="OB01">OB01</option>
+                </select>
+
+                <!-- FAVORITES TOGGLE -->
+                <button id="favToggle" class="fav-toggle" title="Toggle favorites">
+                    <span id="favStar">☆</span>
+                    <span id="favCount">0</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ===== MAIN GRID ===== -->
+    <main>
+        <div id="loadingOverlay" class="loading-container">
+            <div class="main-spinner"></div>
+            <p id="loadingText" class="loading-text">Loading data...</p>
+        </div>
+
+        <!-- FAVORITES TOOLBAR -->
+        <div id="favToolbar" class="fav-toolbar">
+            <div class="fav-toolbar-left">
+                <span class="fav-icon">⭐</span>
+                <span class="fav-label">Favorites</span>
+                <span class="fav-count-badge" id="favToolbarCount">0</span>
+            </div>
+            <div class="fav-toolbar-right">
+                <button id="favImportBtn" class="action-btn-small" title="Import favorites from file">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><path d="M19 9h-4v7H9v-7H5l7-7 7 7zM5 18v2h14v-2H5z"/></svg>
+                    Import
+                </button>
+                <button id="favExportBtn" class="action-btn-small" title="Export favorites as file">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                    Export
+                </button>
+                <button id="favClearBtn" class="action-btn-small" title="Clear all favorites" style="color: #ff6b6b;">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                    Clear
+                </button>
+            </div>
+        </div>
+
+        <div id="itemGrid" class="grid"></div>
+
+        <div id="paginationContainer" class="pagination-container">
+            <div class="pagination-glass">
+                <div class="page-static-part">
+                    <button id="searchPageBtn" class="search-page-btn" title="Search Page">
+                        <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                    </button>
+                    <input type="number" id="jumpInput" class="jump-input-box" min="1" value="1" />
+                    <span>in</span>
+                    <span id="totalPagesUI" class="total-pages-text">1</span>
+                </div>
+                <div class="vertical-divider"></div>
+                <div class="page-scroll-part">
+                    <button id="btnPrev" class="page-btn nav-btn" title="Scroll Left">&laquo;</button>
+                    <div id="pageNumbers"></div>
+                    <button id="btnNext" class="page-btn nav-btn" title="Scroll Right">&raquo;</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="infiniteSentinel" class="infinite-sentinel" style="display:none;">
+            <span class="spinner-small"></span> Loading more...
+        </div>
+    </main>
+
+    <!-- ===== EXPANDED ITEM DETAILS MODAL ===== -->
+    <div id="itemModal" class="modal hidden">
+        <div class="modal-content item-modal-content">
+            <button class="close-btn" onclick="closeModal('itemModal')" aria-label="Close modal">&times;</button>
+            <div class="item-modal-top">
+                <div class="item-modal-left">
+                    <div class="img-wrapper">
+                        <img id="modalImg" src="" alt="Item Image" />
+                        <!-- Modal star button -->
+                        <button id="modalStarBtn" class="star-btn modal-star" title="Toggle favorite">☆</button>
+                    </div>
+                    <div class="action-btns-row">
+                        <button id="modalCopyImgBtn" class="action-btn-small icon-only-btn" title="Copy Icon">
+                            <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                        </button>
+                        <button id="modalDlBtn" class="action-btn-small icon-only-btn" title="Download Icon">
+                            <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                        </button>
+                        <button id="modalShareBtn" class="action-btn-small icon-only-btn" title="Share Item">
+                            <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="item-modal-right">
+                    <div class="close-btn-float"></div>
+                    <h2 id="modalName">Loading...</h2>
+                    <div id="modalIconName" class="modal-icon-name"></div>
+                    <div class="badges" id="modalBadges"></div>
+                </div>
+            </div>
+            <div class="item-modal-divider"></div>
+            <div class="item-modal-bottom desc-box">
+                <h3>Description</h3>
+                <p id="modalDesc"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== SETTINGS MODAL ===== -->
+    <div id="settingsModal" class="modal hidden">
+        <div class="modal-content settings-content">
+            <button class="close-btn" onclick="closeModal('settingsModal')" aria-label="Close modal">&times;</button>
+
+            <div class="settings-header">
+                <h2>Settings</h2>
+                <div class="settings-tabs">
+                    <button class="tab-btn active" data-tab="general">General</button>
+                    <button class="tab-btn" data-tab="app">App</button>
+                    <button class="tab-btn" data-tab="contact">Contact</button>
+                </div>
+            </div>
+
+            <div class="settings-body">
+
+                <!-- General Tab Content -->
+                <div id="tab-general" class="tab-content active">
+                    <div class="settings-section">
+                        <h3>Preferences</h3>
+
+                        <div class="settings-row" style="flex-direction: column; align-items: flex-start;">
+                            <span class="settings-label">Range of search</span>
+                            <div class="range-options">
+                                <label class="checkbox-label"><input type="checkbox" id="rangeName" checked> Name</label>
+                                <label class="checkbox-label"><input type="checkbox" id="rangeID" checked> ID</label>
+                                <label class="checkbox-label"><input type="checkbox" id="rangeDesc"> Description</label>
+                                <label class="checkbox-label"><input type="checkbox" id="rangeIcon"> Icon</label>
+                            </div>
+                        </div>
+
+                        <div class="settings-row">
+                            <span class="settings-label">Item grid</span>
+                            <select id="displayModeSelect" class="select-small">
+                                <option value="multi">Multi page</option>
+                                <option value="infinite">Infinite scroll</option>
+                            </select>
+                        </div>
+
+                        <div class="settings-row">
+                            <span class="settings-label">Click action</span>
+                            <select id="clickAction" class="select-small">
+                                <option value="details">View details</option>
+                                <option value="copyID">Copy ID</option>
+                                <option value="copyIcon">Copy icon</option>
+                                <option value="download">Save icon</option>
+                            </select>
+                        </div>
+
+                        <div class="settings-row">
+                            <span class="settings-label">Download as</span>
+                            <select id="downloadAs" class="select-small">
+                                <option value="id">&lt;id&gt;.png</option>
+                                <option value="name" selected>&lt;icon&gt;.png</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3>Icon storage</h3>
+                        <div class="settings-row no-divider">
+                            <span class="settings-label">Auto clean at</span>
+                            <div class="limit-input-group">
+                                <input type="number" id="iconLimitInput" class="limit-input" max="9999" value="15">
+                                <span class="limit-unit">MB</span>
+                                <button id="iconLimitTick" class="action-btn-small icon-only-btn" disabled>
+                                    <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="settings-row compact" style="padding-top: 6px; border-bottom: none;">
+                            <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                                <div class="storage-bar-wrapper">
+                                    <div class="storage-bar-fill" id="storageBarFill"></div>
+                                    <span class="storage-bar-text" id="storageBarText">0.0MB / 15MB</span>
+                                </div>
+                                <button id="cleanStorageBtn" class="action-btn-small icon-only-btn" title="Clean Icon Storage" style="margin-left: 12px; flex-shrink: 0;">
+                                    <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- App Tab Content -->
+                <div id="tab-app" class="tab-content">
+                    <div class="settings-section">
+                        <h3>System</h3>
+
+                        <div class="settings-row">
+                            <span class="settings-label">WebApp version: <span class="pill pill-blue" id="webappVersionUI">Loading...</span></span>
+                            <button id="updateWebAppBtn" class="action-btn-small req-data-btn">
+                                <svg viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+                                Update
+                            </button>
+                        </div>
+
+                        <div class="settings-row">
+                            <span class="settings-label">WebApp changelogs</span>
+                            <button id="viewChangelogsBtn" class="action-btn-small req-data-btn">
+                                <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                                View
+                            </button>
+                        </div>
+
+                        <div class="settings-row">
+                            <span class="settings-label">Database version: <span class="pill pill-green" id="dbVersionUI">Unknown</span></span>
+                            <button id="resyncBtn" class="action-btn-small req-data-btn">
+                                <svg id="syncIconNormal" viewBox="0 0 24 24"><path d="M12 2.75a9.25 9.25 0 1 0 4.737 17.197l-1.01-1.39A7.5 7.5 0 1 1 19.5 12h-2l3.125 4.5L24 12h-2.75a9.25 9.25 0 0 0-9.25-9.25z"/></svg>
+                                <svg id="syncIconSpinner" class="btn-spinner" viewBox="0 0 24 24" style="display: none;"><path d="M12 2v4c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 21.523 2 16h4c0 3.314 2.686 6 6 6s6-2.686 6-6-2.686-6-6-6V2z"/></svg>
+                                Sync
+                            </button>
+                        </div>
+
+                        <div class="settings-row">
+                            <span class="settings-label">Database info</span>
+                            <button id="summarizeBtn" class="action-btn-small req-data-btn">
+                                <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                                View
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3>Advanced</h3>
+
+                        <div class="settings-row">
+                            <span class="settings-label">Missing filters &amp; icons</span>
+                            <button id="findFiltersBtn" class="action-btn-small req-data-btn">
+                                <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+                                Analyze
+                            </button>
+                        </div>
+
+                        <div class="settings-row">
+                            <span class="settings-label">Download database</span>
+                            <div class="dl-dropdown-wrapper">
+                                <button id="dlDbBtn" class="action-btn-small req-data-btn">
+                                    <svg id="dlDbNormal" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                                    <svg id="dlDbSpinner" class="btn-spinner" viewBox="0 0 24 24" style="display: none;"><path d="M12 2v4c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 21.523 2 16h4c0 3.314 2.686 6 6 6s6-2.686 6-6-2.686-6-6-6V2z"/></svg>
+                                    DB ▾
+                                </button>
+                                <div id="dlDbMenu" class="dl-dropdown-menu">
+                                    <button class="dl-dropdown-item" id="dlJson">
+                                        <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                                        JSON
+                                    </button>
+                                    <button class="dl-dropdown-item" id="dlMsgpack">
+                                        <svg viewBox="0 0 24 24"><path d="M19.5 3h-15C3.1 3 2 4.1 2 5.5v13C2 19.9 3.1 21 4.5 21h15c1.4 0 2.5-1.1 2.5-2.5v-13C22 5.9 20.9 3 19.5 3zM12 17l-4-4h2.5V9h3v4H16l-4 4z"/></svg>
+                                        MSGPACK
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="settings-row">
+                            <span class="settings-label">Source code</span>
+                            <a id="sourceCodeLink" href="#" target="_blank" style="text-decoration: none;">
+                                <button class="action-btn-small">
+                                    <svg viewBox="0 0 24 24"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+                                    GitHub
+                                </button>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== CONTACT TAB ===== -->
+                <div id="tab-contact" class="tab-content">
+                    <div class="settings-section" style="margin-bottom: 0;">
+                        <div class="profile-container">
+                            <div class="profile-image-wrapper">
+                                <div class="profile-image-frame" id="profileFrame">
+                                    <img id="authorImage" src="" alt="Author" />
+                                    <div class="profile-loader" id="authorImageLoader">
+                                        <div class="spinner"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="profile-name">
+                                <span class="at-symbol">@</span><span id="profileAuthorName">AfnanTawsif</span>
+                            </div>
+
+                            <div class="profile-github">on Github</div>
+
+                            <div class="profile-reachout">Reach out via:</div>
+
+                            <div class="profile-buttons">
+                                <a id="contactFacebook" class="profile-btn fb" target="_blank" rel="noopener noreferrer">
+                                    <svg viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                                    Facebook
+                                </a>
+                                <a id="contactInstagram" class="profile-btn ig" target="_blank" rel="noopener noreferrer">
+                                    <svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                                    Instagram
+                                </a>
+                                <a id="contactEmail" class="profile-btn email" target="_blank" rel="noopener noreferrer">
+                                    <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+                                    Email
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-footer">
+                <span>Built by: <strong id="devNameUI"></strong></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== REPORT MODAL ===== -->
+    <div id="reportModal" class="modal hidden">
+        <div class="modal-content report-content">
+            <div class="report-header">
+                <h2 id="reportTitle">Developer Report</h2>
+                <button class="close-btn" onclick="closeModal('reportModal')" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="report-body">
+                <div id="reportContent" class="report-text"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast UI -->
+    <div id="toast" class="toast-notification"></div>
+
+    <!-- ===== SCRIPTS ===== -->
+    <script src="https://cdn.jsdelivr.net/npm/@msgpack/msgpack@3.0.0-beta2/dist.es5+umd/msgpack.min.js">
+    </script>
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+# Allow all crawlers
+User-agent: *
+Allow: /
+
+# Disallow parameter-based URLs to avoid duplicate content
+Disallow: /?item=*
+Disallow: /?settings=true
+
+# Sitemap location
+Sitemap: https://ff-catalog.netlify.app/sitemap.xml
