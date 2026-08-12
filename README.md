@@ -1,5 +1,5 @@
 
-# 🎮 Free Fire Catalog
+## 🎮 Free Fire Catalog
 
 **The ultimate open source web-based catalog for Free Fire items – blazing fast, fully offline-capable, and built with developer-first optimization.**
 
