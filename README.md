@@ -1,5 +1,6 @@
 
 ## 🎮 Free Fire Catalog
+![Free Fire Catalog Banner](./Banner.jpg)
 
 **Open source web-based catalog for Free Fire items – search, filter, and browse thousands of Free Fire item data. Optimized performance, exceptional features, fully offline-capable.**
 
