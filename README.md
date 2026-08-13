@@ -1,7 +1,7 @@
 
 ## 🎮 Free Fire Catalog
 
-**Open source web-based catalog for Free Fire items – search, filter, and browse thousands of Free Fire item data. Blazing fast, fully offline-capable, and built with developer-first optimization.**
+**Open source web-based catalog for Free Fire items – search, filter, and browse thousands of Free Fire item data. Optimized performance, exceptional features, fully offline-capable.**
 
 🔗 **Live Website:** [https://ff-catalog.netlify.app/](https://ff-catalog.netlify.app/)
 
@@ -11,7 +11,7 @@
 
 | **Database Version** | **Total Items** |
 |----------------------|-----------------|
-| _Shown in-app_       | _Shown in-app_  |
+|     2026-07-14       |      33186      |
 
 The app checks for a new database every 24 hours, and you can force a sync anytime using the **Sync** button from **Settings -> App**
 
@@ -88,8 +88,6 @@ All images are served with optimal caching headers via jsDelivr.
 ## 📦 Database & PNG Source
 
 The database and icons are maintained separately from the WebApp code.
-
-They are automatically fetched from the following sources:
 
 - **Database** (MessagePack, gzip-compressed):
   [`https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/database.msgpack.gz`](https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/database.msgpack.gz)
@@ -168,7 +166,6 @@ To update: edit the JSON source, modify updated_on value, convert the final json
 
 **Important:** After updating `database.msgpack.gz`, purge the jsDelivr cache to make sure users get the latest update immediately.  To purge your cdn link, visit: 
 
-
  [jsDelivr purging tool](https://www.jsdelivr.com/tools/purge)
 
 ### 6. Updating WebApp Version / Changelog
@@ -183,7 +180,7 @@ This triggers the Service Worker update and notifies users. otherwise users will
 
 Update `WebApp/Online/whats_new.json` with the new version and changes.
 
-Then purge the jsDelivr cache for `whats_new.json` using the same purge URL.
+Then purge the jsDelivr cache for `whats_new.json`.
 
 ### 7. Updating Author Image (optional)
 
@@ -209,7 +206,7 @@ The database is re-fetched every 24 hours (or forced via the **Sync** button) to
 
 ## 🤝 Contributing
 
-We welcome contributions! Here’s how you can help:
+Here’s how you can help:
 
 - **Add missing icons** – If you notice an item without an icon in the app, find the PNG (or create it) and submit a pull request to the `PNG/` folder.
 - **Update the database** – If you have a more complete or corrected dataset, convert it to MessagePack and submit a PR.
@@ -221,12 +218,6 @@ We welcome contributions! Here’s how you can help:
 - Follow the existing code style.
 - Test your changes locally before submitting.
 - For icon additions, ensure the file name matches the item ID exactly.
-
----
-
-## 📄 License
-
-This project is open source and available under the MIT License.
 
 ---
 
