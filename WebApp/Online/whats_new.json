@@ -1,5 +1,11 @@
 [
     {
+        "version": "v1.0.4",
+        "logs": [
+            "Share: Added banner for scrapers"
+        ]
+    },
+    {
         "version": "v1.0.3",
         "logs": [
             "UI/UX: Added decorative bar in details menu",
