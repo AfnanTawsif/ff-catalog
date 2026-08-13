@@ -1,4 +1,4 @@
-[![https://ff-catalog.netlify.app](https://img.shields.io/badge/Netlify-v1.9.4-blue?logo=netlify&logoColor=white)](https://ff-catalog.netlify.app/)
+[![Netlify](https://img.shields.io/badge/Netlify-v1.0.4-blue?logo=netlify&logoColor=white)](https://ff-catalog.netlify.app/)
 ## 🎮 Free Fire Catalog
 ![Free Fire Catalog Banner](./WebApp/App/icons/banner.jpg)
 
