@@ -210,18 +210,11 @@ The database is re-fetched every 24 hours (or forced via the **Sync** button) to
 
 ## 🤝 Contributing
 
-Here’s how you can help:
+Contributions, bug reports, and feature requests are always welcome!
 
-- **Add missing icons** – If you notice an item without an icon in the app, find the PNG (or create it) and submit a pull request to the `PNG/` folder.
-- **Update the database** – If you have a more complete or corrected dataset, convert it to MessagePack and submit a PR.
-- **Improve the WebApp** – Bug fixes, performance enhancements, or new features are appreciated.
-- **Report issues** – Open an issue on GitHub with clear steps to reproduce.
+Whether you want to add missing item icons, update the database, or enhance the WebApp, please read our **[Contributing Guidelines](.github/CONTRIBUTING.md)** before submitting a Pull Request.
 
-### Guidelines
-
-- Follow the existing code style.
-- Test your changes locally before submitting.
-- For icon additions, ensure the file name matches the item ID exactly.
+Special thanks to all contributors who help keep this catalog updated!
 
 ---
 
