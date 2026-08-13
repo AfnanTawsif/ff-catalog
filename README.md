@@ -1,15 +1,9 @@
 
 ## 🎮 Free Fire Catalog
 
-**Open source web-based catalog for Free Fire items – blazing fast, fully offline-capable, and built with developer-first optimization.**
+**Open source web-based catalog for Free Fire items – search, filter, and browse thousands of Free Fire item data. Blazing fast, fully offline-capable, and built with developer-first optimization.**
 
 🔗 **Live Website:** [https://ff-catalog.netlify.app/](https://ff-catalog.netlify.app/)
-
----
-
-## 📖 Introduction
-
-Free Fire Catalog is a modern, single-page web application that lets you search, filter, and browse thousands of Free Fire items (bundles, weapons, skins, emotes, and more).
 
 ---
 
