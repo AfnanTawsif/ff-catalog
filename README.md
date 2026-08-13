@@ -218,10 +218,10 @@ Special thanks to all contributors who help keep this catalog updated!
 
 ---
 
-## 🙏 Credits
+## ❤️ Credits
 
 - **Database & icons:** ShahGCreator
-- **Built with:** ❤️ and lots of caffeine.
+- **Built with:** ☕ pure caffeine and late-night commits.
 
 
 If you find this useful, don’t forget to ⭐ star the repository.
