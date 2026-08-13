@@ -52,7 +52,7 @@ The app checks for a new database every 24 hours, and you can force a sync anyti
 - **⚙️ Rich Settings**
   - Customize search scope, click action, download naming, icon storage limit, and more.
   - View database statistics, missing filters, and missing icons.
-  - One-click WebApp update check and version changelog.
+  - One-click update check and version changelog.
 
 - **📱 PWA & Shareable**
   - Installable as a Progressive Web App on mobile devices.
