@@ -2,7 +2,7 @@
 ## 🎮 Free Fire Catalog
 ![Free Fire Catalog Banner](./Banner.jpg)
 
-**Open source web-based catalog for Free Fire items – search, filter, and browse thousands of Free Fire item data. Optimized performance, exceptional features, fully offline-capable.**
+**A fast, feature-rich Free Fire item catalog for searching, filtering, and browsing thousands of items with offline capability.**
 
 🔗 **Live Website:** [https://ff-catalog.netlify.app/](https://ff-catalog.netlify.app/)
 
