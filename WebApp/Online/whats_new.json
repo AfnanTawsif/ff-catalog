@@ -2,7 +2,7 @@
     {
         "version": "v1.0.3",
         "logs": [
-            "UI/UX: Added decorative bar in details menu"
+            "UI/UX: Added decorative bar in details menu",
             "Java: Better tutorial & changelogs behavior" 
         ]
     },
