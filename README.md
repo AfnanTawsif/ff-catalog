@@ -176,7 +176,7 @@ Bump the version in `sw.js`:
 const CACHE_NAME = 'ff-catalog-app-vX.Y.Z';
 ```
 
-This triggers the Service Worker update and notifies users. otherwise users will be stuck at old cached version of the WebApp.
+This triggers the Service Worker update and notifies users. Otherwise users will be stuck at old cached version of the WebApp.
 
 Update `WebApp/Online/whats_new.json` with the new version and changes.
 
