@@ -186,7 +186,7 @@ Then purge the jsDelivr cache for `whats_new.json`.
 
 Replace `WebApp/Online/author.jpg` with your own picture.
 
-Purge the CDN cache after updating.
+Purge the CDN cache after updating. Note that author images is cached for 24 hours (just like database) to save bandwidth.
 
 ### 8. Deploy
 
