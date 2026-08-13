@@ -1,5 +1,11 @@
 [
     {
+        "version": "v1.0.2",
+        "logs": [
+            "Fixed tutorial bugs"
+        ]
+    },
+    {
         "version": "v1.0.1",
         "logs": [
             "Added missing OB tag filters (OB01–OB25, OB27–OB54, excluding OB90)",
