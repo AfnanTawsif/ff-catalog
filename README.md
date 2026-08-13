@@ -89,7 +89,7 @@ All images are served with optimal caching headers via jsDelivr.
 
 The database and icons are maintained separately from the WebApp code.
 
-- **Database** (MessagePack, gzip-compressed):
+- **Database**:
   [`https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/database.msgpack.gz`](https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/database.msgpack.gz)
   - Original source: [Link](https://ff-item.netlify.app/data.msgpack.gz)
 
