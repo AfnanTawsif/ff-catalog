@@ -1,4 +1,5 @@
 [![Netlify](https://img.shields.io/badge/Netlify-v1.0.4-blue?logo=netlify&logoColor=white)](https://ff-catalog.netlify.app/)
+[![Database](https://img.shields.io/badge/Database-2026--07--14-2e7d32?logo=databricks&logoColor=white)](https://github.com/AfnanTawsif/ff-catalog/blob/main/database.msgpack.gz)
 ## 🎮 Free Fire Catalog
 ![Free Fire Catalog Banner](./WebApp/App/icons/banner.jpg)
 
