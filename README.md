@@ -25,7 +25,7 @@ The app checks for a new database every 24 hours, and you can force a sync anyti
   - Decompression (`DecompressionStream`) is hardware-accelerated in modern browsers.
 
 - **💾 Smart Storage & Caching**
-  - Icon images are cached in the browser's Cache API and **automatically cleaned** when the storage limit (configurable) is exceeded.
+  - Icon images are cached in the browser's Cache API (to save client bandwidth upon revisit) and **automatically cleaned** when the storage limit (configurable) is exceeded.
   - The entire app (HTML, JS, CSS, SW) is cached by the Service Worker, enabling **offline access** (except new updates sync).
   - Database is stored in IndexedDB for fast subsequent loads.
 
