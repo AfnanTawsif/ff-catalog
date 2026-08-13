@@ -129,7 +129,7 @@ ff-catalog/
 │       └── author.jpg               # Author avatar
 ├── PNG/                             # All item icons (PNG, named by item ID)
 ├── database.msgpack.gz               # Compressed database
-└── README.md                         # This file
+├── README.md                         # This file
 └── LICENSE                           # MIT License
 ```
 
@@ -163,7 +163,7 @@ If you need to generate app icons for the WebApp (PWA), use [maskable.app](https
 
 The database is in MessagePack format (`.msgpack`) for max speed, then gzipped (`.gz`) for faster downloads.
 
-To update: edit the JSON source, modify updated_on value, convert the final json to `.msgpack` using tools like [conventro.com](https://conventro.com/convert/json-to-msgpack), then compress with maximum GZIP.
+To update: edit the JSON source (you can generate a json version of the database from `settings > app` inside the webapp), add new entries, modify updated_on value, convert the final json to `.msgpack` using tools like [conventro.com](https://conventro.com/convert/json-to-msgpack), then compress with maximum GZIP.
 
 **Important:** After updating `database.msgpack.gz`, purge the jsDelivr cache to make sure users get the latest update immediately.  To purge your cdn link, visit: 
 
