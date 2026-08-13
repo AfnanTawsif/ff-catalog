@@ -1034,19 +1034,39 @@
             word-break: break-word;
         }
 
+        /* ===== ICON NAME BAR – dynamic underline / scrollbar ===== */
         .modal-icon-name {
             font-size: 11px;
             color: var(--text-muted);
             margin-top: 1px;
             margin-bottom: 12px;
             font-style: italic;
-            overflow-x: auto;
             white-space: nowrap;
-            padding-bottom: 6px;
-            display: block;
+            padding-bottom: 5px;
+            display: block;             /* keeps block for overflow handling */
+            overflow-x: auto;           /* fallback */
             scrollbar-width: thin;
             scrollbar-color: var(--glow) rgba(255, 255, 255, 0.05);
+            /* No border-bottom; we'll use text-decoration when fitting */
+            transition: text-decoration 0.2s ease;
         }
+
+        /* When text fits → hide scrollbar + show blue underline under the text */
+        .modal-icon-name.no-overflow {
+            overflow-x: hidden;
+            text-decoration: underline;
+            text-decoration-color: #2196F3;   /* blue */
+            text-decoration-thickness: 4px;
+            text-underline-offset: 6px;       /* adjust as needed */
+            /* No border-bottom */
+        }
+
+        /* When text overflows → show scrollbar + remove underline */
+        .modal-icon-name.overflowing {
+            overflow-x: auto;
+            text-decoration: none;
+        }
+
         .modal-icon-name::-webkit-scrollbar {
             height: 5px;
         }

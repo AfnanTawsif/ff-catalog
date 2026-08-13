@@ -24,11 +24,9 @@ const CONFIG = {
 // ================================================================
 
 // --------------------------------------------------------------
-//  TUTORIAL MODE FLAGS (persistent via localStorage)
+//  SETTINGS BUBBLE TUTORIAL FLAG (persistent via localStorage)
 // --------------------------------------------------------------
-let tutorialWhatsNewDismissed = localStorage.getItem('tutorial_whatsnew_dismissed') === 'true';
 let tutorialSettingsBubbleDismissed = localStorage.getItem('tutorial_settings_bubble_dismissed') === 'true';
-let isTutorialWhatsNewOpen = false;
 let settingsBubbleShown = false;
 
 // --------------------------------------------------------------
@@ -56,6 +54,8 @@ tabBtns.forEach(btn => {
 // --------------------------------------------------------------
 let WEBAPP_VERSION = 'Unknown';
 let swRegistration = null;
+let versionResolve = null;
+const versionPromise = new Promise(resolve => { versionResolve = resolve; });
 
 const WEBSITE_URL = CONFIG.WEBSITE_URL || (window.location.origin + window.location.pathname).replace(/\/+$/, '');
 
@@ -72,9 +72,10 @@ document.getElementById('profileAuthorName').textContent = CONFIG.CONTACT.devNam
 // --------------------------------------------------------------
 let initialLoadDone = false;
 let creditToastShown = false;
+let isUpdateReload = false;
 
 // --------------------------------------------------------------
-//  FETCH SERVICE WORKER VERSION
+//  FETCH SERVICE WORKER VERSION (returns a promise)
 // --------------------------------------------------------------
 async function fetchSWVersion() {
     try {
@@ -104,11 +105,14 @@ async function fetchSWVersion() {
     }
 
     document.getElementById('webappVersionUI').textContent = WEBAPP_VERSION;
+    if (versionResolve) versionResolve(WEBAPP_VERSION);
+    return WEBAPP_VERSION;
 }
+// Start fetching immediately, but we will await it when needed
 fetchSWVersion();
 
 // --------------------------------------------------------------
-//  SERVICE WORKER REGISTRATION
+//  SERVICE WORKER REGISTRATION (with update detection)
 // --------------------------------------------------------------
 function registerServiceWorker() {
     if (!('serviceWorker' in navigator)) {
@@ -121,15 +125,20 @@ function registerServiceWorker() {
             swRegistration = reg;
             console.log('Service Worker registered successfully');
             reg.update().catch(() => {});
+
+            // Detect when a new worker is found (update)
             reg.addEventListener('updatefound', () => {
                 const newWorker = reg.installing;
                 newWorker.addEventListener('statechange', () => {
                     if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        // A new version is installed; mark that we are updating
+                        sessionStorage.setItem('sw_update_pending', 'true');
                         sessionStorage.setItem('webapp_updated', 'true');
                         sessionStorage.setItem('clear_url_on_load', 'true');
                     }
                 });
             });
+
             return reg;
         })
         .catch(err => {
@@ -139,15 +148,20 @@ function registerServiceWorker() {
         });
 }
 
+// Service worker controller change – reload only if this is an update, not first install
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         registerServiceWorker();
 
         let refreshing = false;
         navigator.serviceWorker.addEventListener('controllerchange', () => {
-            if (!refreshing) {
-                refreshing = true;
-                window.location.reload();
+            // Only reload if we have a pending update flag
+            if (sessionStorage.getItem('sw_update_pending') === 'true') {
+                sessionStorage.removeItem('sw_update_pending');
+                if (!refreshing) {
+                    refreshing = true;
+                    window.location.reload();
+                }
             }
         });
     });
@@ -393,7 +407,7 @@ function showToast(msg) {
 }
 
 function showCreditToastIfNeeded() {
-    if (creditToastShown) return;
+    if (creditToastShown || isUpdateReload) return;
     creditToastShown = true;
     setTimeout(() => {
         showToast("🛠️ Dev: @AfnanTawsif");
@@ -401,14 +415,9 @@ function showCreditToastIfNeeded() {
 }
 
 // --------------------------------------------------------------
-//  WHAT'S NEW? DIALOG (supports tutorial mode)
+//  WHAT'S NEW? DIALOG (supports tutorial mode for first visit)
 // --------------------------------------------------------------
 async function showWhatsNew(tutorial = false) {
-    // If tutorial mode is requested, set the flag
-    if (tutorial) {
-        isTutorialWhatsNewOpen = true;
-    }
-
     const reportTitle = document.getElementById('reportTitle');
     const reportContent = document.getElementById('reportContent');
 
@@ -480,6 +489,9 @@ async function showWhatsNew(tutorial = false) {
     } else {
         reportContent.innerHTML = `<p class="whatsnew-error">Failed to load from online and cache</p>`;
     }
+
+    // If this was a tutorial (first visit), we don't need to do anything special;
+    // the dialog will be closed by the user.
 }
 
 function renderWhatsNewData(data, container) {
@@ -715,6 +727,15 @@ function openModal(id, data = null) {
         currentItemModalId = data.itemId;
     }
 
+    // --- NEW: Adjust icon name overflow when item modal opens ---
+    if (id === 'itemModal') {
+        setTimeout(() => {
+            const iconNameEl = document.getElementById('modalIconName');
+            if (iconNameEl) adjustIconNameOverflow(iconNameEl);
+        }, 50);
+    }
+    // -----------------------------------------------------------
+
     updateUrlFromStack('push');
 }
 
@@ -722,15 +743,6 @@ function closeModal(id, isPopState = false) {
     if (isPopState) {
         forceHideModal(id);
         return;
-    }
-
-    // --- Tutorial dismissal handling for reportModal ---
-    if (id === 'reportModal' && isTutorialWhatsNewOpen) {
-        tutorialWhatsNewDismissed = true;
-        localStorage.setItem('tutorial_whatsnew_dismissed', 'true');
-        isTutorialWhatsNewOpen = false;
-        // After dismissing the tutorial dialog, show settings bubble (if not dismissed)
-        setTimeout(() => showSettingsBubbleIfNeeded(), 500);
     }
 
     forceHideModal(id);
@@ -810,6 +822,23 @@ document.addEventListener('keydown', e => {
 });
 
 // --------------------------------------------------------------
+//  ICON NAME OVERFLOW ADJUSTMENT (NEW)
+// --------------------------------------------------------------
+function adjustIconNameOverflow(el) {
+    if (!el) return;
+    requestAnimationFrame(() => {
+        const hasOverflow = el.scrollWidth > el.clientWidth;
+        if (hasOverflow) {
+            el.classList.remove('no-overflow');
+            el.classList.add('overflowing');
+        } else {
+            el.classList.remove('overflowing');
+            el.classList.add('no-overflow');
+        }
+    });
+}
+
+// --------------------------------------------------------------
 //  ITEM MODAL POPULATION
 // --------------------------------------------------------------
 let currentShareItemId = null;
@@ -857,6 +886,9 @@ async function populateItemModal(item) {
 
     const iconNameEl = document.getElementById('modalIconName');
     iconNameEl.textContent = item.icon || 'Undefined';
+
+    // --- NEW: adjust overflow right after setting text ---
+    adjustIconNameOverflow(iconNameEl);
 
     let badgesHTML = `<span class="badge badge-id">ID: ${item.itemID}</span>`;
     if (item.type) {
@@ -1118,8 +1150,7 @@ document.getElementById('openSettings').addEventListener('click', () => {
 //  VIEW CHANGELOGS BUTTON
 // --------------------------------------------------------------
 viewChangelogsBtn.addEventListener('click', () => {
-    // Manual open, not tutorial
-    showWhatsNew(false);
+    showWhatsNew(false); // manual open, not tutorial
 });
 
 // --------------------------------------------------------------
@@ -1180,17 +1211,18 @@ document.getElementById('updateWebAppBtn').addEventListener('click', async () =>
             return;
         }
 
+        // Store the new version in localStorage so we can show it after reload
+        localStorage.setItem('new_sw_version', newVersion);
+
+        // Set flags for update and trigger update
         sessionStorage.setItem('webapp_updated', 'true');
         sessionStorage.setItem('clear_url_on_load', 'true');
-
+        // sw_update_pending will be set by the SW's updatefound event
         await swRegistration.update();
         showToast(`Updating to ${newVersion}...`);
 
-        setTimeout(() => {
-            if (sessionStorage.getItem('webapp_updated') === 'true') {
-                window.location.reload();
-            }
-        }, 3000);
+        // The page will reload when the new SW takes over (via controllerchange)
+        // The reload will show the toast again on the new page.
 
     } catch (err) {
         console.error(err);
@@ -1982,13 +2014,14 @@ async function initDatabase(forceSync = false) {
         if (!initialLoadDone) {
             initialLoadDone = true;
             showCreditToastIfNeeded();
-            // After initial load, handle tutorial mode
-            if (!tutorialWhatsNewDismissed) {
-                showWhatsNew(true);
-            } else {
-                // If tutorial already dismissed, show settings bubble after a moment
-                setTimeout(() => showSettingsBubbleIfNeeded(), 1000);
+            // First visit: show What's New tutorial (if not seen before)
+            if (!localStorage.getItem('ff_visited')) {
+                localStorage.setItem('ff_visited', 'true');
+                // Delay to ensure DOM is ready and other operations settled
+                setTimeout(() => showWhatsNew(true), 500);
             }
+            // Always show settings bubble after a delay (unless already dismissed)
+            setTimeout(() => showSettingsBubbleIfNeeded(), 1000);
         }
 
         syncModalsFromUrl();
@@ -2077,12 +2110,14 @@ async function initDatabase(forceSync = false) {
         if (!initialLoadDone && !forceSync) {
             initialLoadDone = true;
             showCreditToastIfNeeded();
-            // Show tutorial if not dismissed
-            if (!tutorialWhatsNewDismissed) {
-                showWhatsNew(true);
-            } else {
-                setTimeout(() => showSettingsBubbleIfNeeded(), 1000);
+            // First visit: show What's New tutorial (if not seen before)
+            if (!localStorage.getItem('ff_visited')) {
+                localStorage.setItem('ff_visited', 'true');
+                // Delay to ensure DOM is ready and other operations settled
+                setTimeout(() => showWhatsNew(true), 500);
             }
+            // Always show settings bubble after a delay (unless already dismissed)
+            setTimeout(() => showSettingsBubbleIfNeeded(), 1000);
         }
 
         applyFilters();
@@ -2604,23 +2639,47 @@ document.getElementById('favToggle').addEventListener('click', function() {
 });
 
 // --------------------------------------------------------------
+//  WINDOW RESIZE – re‑adjust icon name overflow if modal open
+// --------------------------------------------------------------
+window.addEventListener('resize', () => {
+    const modal = document.getElementById('itemModal');
+    if (modal && !modal.classList.contains('hidden')) {
+        const iconNameEl = document.getElementById('modalIconName');
+        if (iconNameEl) adjustIconNameOverflow(iconNameEl);
+    }
+});
+
+// --------------------------------------------------------------
 //  STARTUP INITIALIZATION
 // --------------------------------------------------------------
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
     // Load favorites filter state
     loadFavState();
 
-    // Handle WebApp update if any
+    // Check if this is an update reload
     if (sessionStorage.getItem('webapp_updated') === 'true') {
+        isUpdateReload = true;
         sessionStorage.removeItem('webapp_updated');
-        const versionMsg = WEBAPP_VERSION !== 'Unknown' ? WEBAPP_VERSION : 'latest';
+
+        // Wait for the version to be fetched (or use stored version)
+        await versionPromise;  // ensures WEBAPP_VERSION is set
+
+        // Use stored version if available (manual update), otherwise use fetched version
+        const storedVersion = localStorage.getItem('new_sw_version');
+        if (storedVersion) {
+            localStorage.removeItem('new_sw_version');
+        }
+        const versionMsg = storedVersion || WEBAPP_VERSION || 'latest';
+
+        // Show update toast and changelog
         setTimeout(() => {
             showToast(`Updated to WebApp version: ${versionMsg}`);
-            // Show update whatsnew only if tutorial whatsnew already dismissed
-            if (tutorialWhatsNewDismissed) {
-                showWhatsNew(false);
-            }
-        }, 1000);
+            setTimeout(() => {
+                showWhatsNew(false); // update changelog, not tutorial
+            }, 500);
+        }, 300);
+    } else {
+        isUpdateReload = false;
     }
 
     // Settings bubble: attach dismiss handlers
