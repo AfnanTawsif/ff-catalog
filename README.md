@@ -1,6 +1,6 @@
 
 ## 🎮 Free Fire Catalog
-![Free Fire Catalog Banner](./Banner.jpg)
+![Free Fire Catalog Banner](./WebApp/App/icons/banner.jpg)
 
 **A fast, feature-rich Free Fire item catalog for searching, filtering, and browsing thousands of items with offline capability.**
 
