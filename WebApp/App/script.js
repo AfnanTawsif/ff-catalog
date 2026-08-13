@@ -24,6 +24,14 @@ const CONFIG = {
 // ================================================================
 
 // --------------------------------------------------------------
+//  TUTORIAL MODE FLAGS (persistent via localStorage)
+// --------------------------------------------------------------
+let tutorialWhatsNewDismissed = localStorage.getItem('tutorial_whatsnew_dismissed') === 'true';
+let tutorialSettingsBubbleDismissed = localStorage.getItem('tutorial_settings_bubble_dismissed') === 'true';
+let isTutorialWhatsNewOpen = false;
+let settingsBubbleShown = false;
+
+// --------------------------------------------------------------
 //  SETTINGS TAB LOGIC
 // --------------------------------------------------------------
 const tabBtns = document.querySelectorAll('.tab-btn');
@@ -63,62 +71,10 @@ document.getElementById('profileAuthorName').textContent = CONFIG.CONTACT.devNam
 //  FLAGS FOR CREDIT TOAST MANAGEMENT
 // --------------------------------------------------------------
 let initialLoadDone = false;
-let isWebAppUpdated = false;
 let creditToastShown = false;
-let isFirstVisit = !localStorage.getItem('ff_visited');
-let pendingUpdateToast = false;
-
-// ─── CHECK FOR UPDATE FLAG IMMEDIATELY (SYNCHRONOUS) ────────────
-if (sessionStorage.getItem('webapp_updated') === 'true') {
-    pendingUpdateToast = true;
-    isWebAppUpdated = true;
-}
-
-// ─── Settings Bubble Logic for First Visit ───────────────────────
-let hasShownSettingsBubble = false;
-
-window.addEventListener('DOMContentLoaded', () => {
-    const reportModal = document.getElementById('reportModal');
-    const settingsBtn = document.getElementById('openSettings');
-    const settingsBubble = document.getElementById('settingsBubble');
-    const bubbleCloseBtn = document.getElementById('settingsBubbleClose');
-
-    if (reportModal && settingsBtn && settingsBubble) {
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.attributeName === 'class') {
-                    const isHidden = reportModal.classList.contains('hidden');
-
-                    if (isHidden && isFirstVisit && !hasShownSettingsBubble) {
-                        hasShownSettingsBubble = true;
-
-                        setTimeout(() => {
-                            settingsBtn.classList.add('pulse-inward');
-                            settingsBubble.classList.add('show');
-
-                            const dismissSpecialState = () => {
-                                settingsBtn.classList.remove('pulse-inward');
-                                settingsBubble.classList.remove('show');
-                            };
-
-                            bubbleCloseBtn.addEventListener('click', (e) => {
-                                e.stopPropagation();
-                                dismissSpecialState();
-                            }, { once: true });
-
-                            settingsBtn.addEventListener('click', dismissSpecialState, { once: true });
-
-                        }, 1000);
-                    }
-                }
-            });
-        });
-        observer.observe(reportModal, { attributes: true });
-    }
-});
 
 // --------------------------------------------------------------
-//  FETCH SERVICE WORKER VERSION (deferred update handling)
+//  FETCH SERVICE WORKER VERSION
 // --------------------------------------------------------------
 async function fetchSWVersion() {
     try {
@@ -152,7 +108,7 @@ async function fetchSWVersion() {
 fetchSWVersion();
 
 // --------------------------------------------------------------
-//  SERVICE WORKER REGISTRATION (with retry)
+//  SERVICE WORKER REGISTRATION
 // --------------------------------------------------------------
 function registerServiceWorker() {
     if (!('serviceWorker' in navigator)) {
@@ -265,7 +221,6 @@ function toggleFavorite(id) {
     }
     saveFavorites(favs);
     updateFavUI();
-    // If we are currently in favorites filter, re-apply to refresh the list
     if (favFilterActive) {
         applyFilters();
     }
@@ -273,7 +228,6 @@ function toggleFavorite(id) {
 
 function getFavoritedItems() {
     const favs = getFavorites();
-    // Sort by timestamp descending (newest first)
     favs.sort((a, b) => b.timestamp - a.timestamp);
     const items = [];
     favs.forEach(f => {
@@ -286,7 +240,7 @@ function getFavoritedItems() {
 // --------------------------------------------------------------
 //  FAVORITES UI STATE
 // --------------------------------------------------------------
-let favFilterActive = false; // will be loaded from localStorage
+let favFilterActive = false;
 
 function loadFavState() {
     const stored = localStorage.getItem('favFilterActive');
@@ -305,7 +259,6 @@ function updateFavUI() {
     const favs = getFavorites();
     const count = favs.length;
 
-    // Update toggle button
     const toggle = document.getElementById('favToggle');
     const starEl = document.getElementById('favStar');
     const countEl = document.getElementById('favCount');
@@ -318,7 +271,6 @@ function updateFavUI() {
     }
     countEl.textContent = count;
 
-    // Update toolbar
     const toolbar = document.getElementById('favToolbar');
     const toolbarCount = document.getElementById('favToolbarCount');
     if (favFilterActive) {
@@ -328,7 +280,6 @@ function updateFavUI() {
         toolbar.classList.remove('visible');
     }
 
-    // Update all card stars (including those not yet rendered, but we'll do that in buildItemCards)
     document.querySelectorAll('.star-btn').forEach(btn => {
         const id = btn.dataset.id;
         if (id) {
@@ -442,7 +393,7 @@ function showToast(msg) {
 }
 
 function showCreditToastIfNeeded() {
-    if (creditToastShown || isWebAppUpdated) return;
+    if (creditToastShown) return;
     creditToastShown = true;
     setTimeout(() => {
         showToast("🛠️ Dev: @AfnanTawsif");
@@ -450,9 +401,14 @@ function showCreditToastIfNeeded() {
 }
 
 // --------------------------------------------------------------
-//  WHAT'S NEW? DIALOG
+//  WHAT'S NEW? DIALOG (supports tutorial mode)
 // --------------------------------------------------------------
-async function showWhatsNew() {
+async function showWhatsNew(tutorial = false) {
+    // If tutorial mode is requested, set the flag
+    if (tutorial) {
+        isTutorialWhatsNewOpen = true;
+    }
+
     const reportTitle = document.getElementById('reportTitle');
     const reportContent = document.getElementById('reportContent');
 
@@ -536,7 +492,6 @@ function renderWhatsNewData(data, container) {
         html += `<div class="whatsnew-version">`;
         html += `<h3>${item.version}</h3>`;
         let logs = item.logs;
-        // If logs is a string, split by newline and filter empty lines
         if (typeof logs === 'string') {
             logs = logs.split(/\n/).filter(line => line.trim().length > 0);
         }
@@ -552,6 +507,28 @@ function renderWhatsNewData(data, container) {
         html += `</div>`;
     });
     container.innerHTML = html;
+}
+
+// --------------------------------------------------------------
+//  SETTINGS BUBBLE (tutorial) CONTROL
+// --------------------------------------------------------------
+function showSettingsBubbleIfNeeded() {
+    if (tutorialSettingsBubbleDismissed || settingsBubbleShown) return;
+    settingsBubbleShown = true;
+    const settingsBtn = document.getElementById('openSettings');
+    const settingsBubble = document.getElementById('settingsBubble');
+    settingsBtn.classList.add('pulse-inward');
+    settingsBubble.classList.add('show');
+}
+
+function dismissSettingsBubble() {
+    tutorialSettingsBubbleDismissed = true;
+    localStorage.setItem('tutorial_settings_bubble_dismissed', 'true');
+    const settingsBtn = document.getElementById('openSettings');
+    const settingsBubble = document.getElementById('settingsBubble');
+    settingsBtn.classList.remove('pulse-inward');
+    settingsBubble.classList.remove('show');
+    settingsBubbleShown = false;
 }
 
 // --------------------------------------------------------------
@@ -747,6 +724,15 @@ function closeModal(id, isPopState = false) {
         return;
     }
 
+    // --- Tutorial dismissal handling for reportModal ---
+    if (id === 'reportModal' && isTutorialWhatsNewOpen) {
+        tutorialWhatsNewDismissed = true;
+        localStorage.setItem('tutorial_whatsnew_dismissed', 'true');
+        isTutorialWhatsNewOpen = false;
+        // After dismissing the tutorial dialog, show settings bubble (if not dismissed)
+        setTimeout(() => showSettingsBubbleIfNeeded(), 500);
+    }
+
     forceHideModal(id);
     updateUrlFromStack('replace');
     if (activeModalStack.length === 0) {
@@ -770,9 +756,7 @@ function forceHideModal(id) {
             const modalImg = document.getElementById('modalImg');
             const modalEl = document.getElementById('itemModal');
 
-            // Delay cleanup to allow CSS transition to finish (0.25s)
             setTimeout(() => {
-                // Only clean if the modal is still hidden (not reopened)
                 if (modalEl && modalEl.classList.contains('hidden')) {
                     if (modalImg && modalImg.dataset.objectUrl) {
                         URL.revokeObjectURL(modalImg.dataset.objectUrl);
@@ -897,7 +881,6 @@ async function populateItemModal(item) {
     const dlBtn = document.getElementById('modalDlBtn');
     dlBtn.onclick = () => triggerDownload(iconUrl, dlFileName);
 
-    // Update modal star
     const modalStar = document.getElementById('modalStarBtn');
     if (modalStar) {
         modalStar.dataset.id = String(item.itemID);
@@ -907,7 +890,6 @@ async function populateItemModal(item) {
         modalStar.onclick = (e) => {
             e.stopPropagation();
             toggleFavorite(item.itemID);
-            // Update card stars as well
             document.querySelectorAll(`.star-btn[data-id="${item.itemID}"]`).forEach(btn => {
                 const fav = isFavorited(item.itemID);
                 btn.innerHTML = fav ? '★' : '☆';
@@ -923,7 +905,7 @@ function openItemModalWithData(item) {
 }
 
 // --------------------------------------------------------------
-//  HELPER: Fetch image as PNG blob (converts SVG if needed)
+//  HELPER: Fetch image as PNG blob
 // --------------------------------------------------------------
 async function fetchImageAsPNGBlob(imgUrl) {
     const fallbackUrl = CONFIG.FALLBACK_IMAGE_URL;
@@ -1107,7 +1089,6 @@ function goHome() {
     searchClear.style.display = 'none';
     searchIcon.style.display = 'flex';
 
-    // Reset favorites filter? No, keep state.
     currentPage = 1;
     applyFilters();
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1121,6 +1102,10 @@ mainTitle.addEventListener('click', goHome);
 //  SETTINGS BUTTON
 // --------------------------------------------------------------
 document.getElementById('openSettings').addEventListener('click', () => {
+    // If the settings bubble is showing, dismiss it (tutorial)
+    if (settingsBubbleShown) {
+        dismissSettingsBubble();
+    }
     if (activeModalStack.includes('settingsModal')) {
         const modal = document.getElementById('settingsModal');
         if (modal) modal.classList.remove('hidden');
@@ -1133,7 +1118,8 @@ document.getElementById('openSettings').addEventListener('click', () => {
 //  VIEW CHANGELOGS BUTTON
 // --------------------------------------------------------------
 viewChangelogsBtn.addEventListener('click', () => {
-    showWhatsNew();
+    // Manual open, not tutorial
+    showWhatsNew(false);
 });
 
 // --------------------------------------------------------------
@@ -1144,7 +1130,7 @@ document.getElementById('resyncBtn').addEventListener('click', () => {
 });
 
 // --------------------------------------------------------------
-//  UPDATE WEBAPP BUTTON (improved)
+//  UPDATE WEBAPP BUTTON
 // --------------------------------------------------------------
 document.getElementById('updateWebAppBtn').addEventListener('click', async () => {
     const btn = document.getElementById('updateWebAppBtn');
@@ -1519,7 +1505,7 @@ function applyDisplayMode() {
 }
 
 // --------------------------------------------------------------
-//  STORAGE/IMAGE CACHE TRACKING — OPTIMIZED WITH DEBOUNCE & PERSISTENCE
+//  STORAGE/IMAGE CACHE TRACKING
 // --------------------------------------------------------------
 const STORAGE_CACHE_VERSION = 1;
 const STORAGE_DEBOUNCE_MS = 1000;
@@ -1531,7 +1517,6 @@ let pendingSizeAdd = 0;
 let storageFlushTimer = null;
 let isStorageDirty = false;
 
-// ─── Persistence helpers ──────────────────────────────────────────
 function loadStorageInfo() {
     try {
         const raw = localStorage.getItem(STORAGE_KEY);
@@ -1558,7 +1543,6 @@ function clearStorageInfo() {
     } catch (_) { /* ignore */ }
 }
 
-// ─── Debounced storage flush ──────────────────────────────────────
 function scheduleStorageFlush() {
     if (storageFlushTimer) {
         clearTimeout(storageFlushTimer);
@@ -1580,8 +1564,6 @@ function flushStorageUpdate() {
     }
 
     renderStorageBar();
-
-    // Persist the new total alongside a fresh key count
     updatePersistedStorageInfo();
     isStorageDirty = false;
 }
@@ -1592,12 +1574,10 @@ async function updatePersistedStorageInfo() {
         const keys = await cache.keys();
         saveStorageInfo(currentIconStorageSize, keys.length);
     } catch (_) {
-        // If we can't read the cache, still persist the size (keyCount will be stale, but we'll re-scan on next load)
         saveStorageInfo(currentIconStorageSize, 0);
     }
 }
 
-// ─── Initialise storage tracking (with cache) ─────────────────────
 async function initStorageTracking() {
     const stored = loadStorageInfo();
     const now = Date.now();
@@ -1611,18 +1591,14 @@ async function initStorageTracking() {
         cache = await caches.open('ff-icons');
         const keys = await cache.keys();
         keyCount = keys.length;
-    } catch (_) {
-        // Cache unavailable — fallback to full scan later
-    }
+    } catch (_) {}
 
-    // If we have recent, version-matched storage info and the key count matches, trust it.
     if (stored && isRecent && versionMatch && stored.keyCount === keyCount) {
         currentIconStorageSize = stored.totalBytes;
         renderStorageBar();
         return;
     }
 
-    // Otherwise, do a full scan (legacy behaviour)
     await fullStorageScan();
 }
 
@@ -1639,7 +1615,6 @@ async function fullStorageScan() {
             }
         }
         currentIconStorageSize = total;
-        // Persist the scan result
         saveStorageInfo(total, requests.length);
         renderStorageBar();
     } catch (e) {
@@ -1649,7 +1624,6 @@ async function fullStorageScan() {
     }
 }
 
-// ─── Render the storage bar ──────────────────────────────────────
 function renderStorageBar() {
     const limitBytes = iconStorageLimitMB * 1024 * 1024;
     const pct = Math.min((currentIconStorageSize / limitBytes) * 100, 100);
@@ -1662,7 +1636,6 @@ function renderStorageBar() {
     storageBarText.textContent = `${usedMB}MB / ${iconStorageLimitMB}MB`;
 }
 
-// ─── Check and auto-clean ────────────────────────────────────────
 async function checkAndCleanStorage() {
     const limitBytes = iconStorageLimitMB * 1024 * 1024;
     if (currentIconStorageSize >= limitBytes) {
@@ -1675,7 +1648,6 @@ async function checkAndCleanStorage() {
     }
 }
 
-// ─── UI event bindings ────────────────────────────────────────────
 iconLimitInput.addEventListener('input', function() {
     if (this.value.length > 4) this.value = this.value.slice(0, 4);
     const val = parseFloat(this.value);
@@ -1713,7 +1685,6 @@ cleanStorageBtn.addEventListener('click', async () => {
     showToast("Cleaned icon storage");
 });
 
-// ─── Hook: add image size to pending batch ──────────────────────
 function recordImageSize(bytes) {
     pendingSizeAdd += bytes;
     scheduleStorageFlush();
@@ -1773,7 +1744,7 @@ async function saveLocalCache(rawData) {
 }
 
 // --------------------------------------------------------------
-//  ROBUST IMAGE LOADER: timeout + retry + cache invalidation
+//  ROBUST IMAGE LOADER
 // --------------------------------------------------------------
 async function loadImageWithRetry(url) {
     const CACHE_TIMEOUT = 2000;
@@ -1825,7 +1796,7 @@ async function loadImageWithRetry(url) {
 }
 
 // --------------------------------------------------------------
-//  MEMORY EFFICIENT LAZY LOADER (with debounced storage updates)
+//  MEMORY EFFICIENT LAZY LOADER
 // --------------------------------------------------------------
 const imageObserver = new IntersectionObserver((entries) => {
     entries.forEach(async entry => {
@@ -1841,12 +1812,9 @@ const imageObserver = new IntersectionObserver((entries) => {
                     img.dataset.objectUrl = objectUrl;
                     img.classList.add('loaded');
 
-                    // Use debounced storage update
                     recordImageSize(blob.size);
 
-                    // Check limit after scheduling the flush
                     if (currentIconStorageSize + pendingSizeAdd > (iconStorageLimitMB * 1024 * 1024)) {
-                        // Flush immediately before checking so the bar reflects the new total
                         flushStorageUpdate();
                         checkAndCleanStorage();
                     }
@@ -1871,7 +1839,7 @@ const imageObserver = new IntersectionObserver((entries) => {
 }, { rootMargin: '400px' });
 
 // --------------------------------------------------------------
-//  ANIMATION PAUSE OBSERVER (off-screen card animations)
+//  ANIMATION PAUSE OBSERVER
 // --------------------------------------------------------------
 let animationObserver = null;
 
@@ -2014,9 +1982,12 @@ async function initDatabase(forceSync = false) {
         if (!initialLoadDone) {
             initialLoadDone = true;
             showCreditToastIfNeeded();
-            if (isFirstVisit) {
-                localStorage.setItem('ff_visited', 'true');
-                setTimeout(() => showWhatsNew(), 1200);
+            // After initial load, handle tutorial mode
+            if (!tutorialWhatsNewDismissed) {
+                showWhatsNew(true);
+            } else {
+                // If tutorial already dismissed, show settings bubble after a moment
+                setTimeout(() => showSettingsBubbleIfNeeded(), 1000);
             }
         }
 
@@ -2106,9 +2077,11 @@ async function initDatabase(forceSync = false) {
         if (!initialLoadDone && !forceSync) {
             initialLoadDone = true;
             showCreditToastIfNeeded();
-            if (isFirstVisit) {
-                localStorage.setItem('ff_visited', 'true');
-                setTimeout(() => showWhatsNew(), 1200);
+            // Show tutorial if not dismissed
+            if (!tutorialWhatsNewDismissed) {
+                showWhatsNew(true);
+            } else {
+                setTimeout(() => showSettingsBubbleIfNeeded(), 1000);
             }
         }
 
@@ -2154,12 +2127,10 @@ function applyFilters() {
     const rDesc = rangeDesc.checked;
     const rIcon = rangeIcon.checked;
 
-    // Start with all items, but if favorites filter is active, use only favorited items
     let sourceItems = allItems;
     if (favFilterActive) {
         const favIds = getFavorites().map(f => f.id);
         sourceItems = allItems.filter(item => favIds.includes(String(item.itemID)));
-        // Sort by favorite order (newest first) - we'll re-sort after filtering
     }
 
     filteredItems = sourceItems.filter(item => {
@@ -2178,7 +2149,6 @@ function applyFilters() {
         return matchQuery && matchTag && matchType && matchRare;
     });
 
-    // If in favorites mode, sort by timestamp descending (newest first)
     if (favFilterActive) {
         const favs = getFavorites();
         const orderMap = {};
@@ -2207,7 +2177,6 @@ function applyFilters() {
     renderItems();
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
-    // Update UI after filter
     updateFavUI();
 }
 
@@ -2222,7 +2191,7 @@ function updateSearchHint() {
 }
 
 // --------------------------------------------------------------
-//  RENDER ITEMS (unified entry point)
+//  RENDER ITEMS
 // --------------------------------------------------------------
 function renderItems() {
     if (displayMode === 'multi') {
@@ -2256,7 +2225,7 @@ function renderPage() {
         if (favFilterActive && getFavorites().length === 0) {
             grid.innerHTML = `
                 <div class="fav-empty-state">
-                    <span class="big-icon">☆</span>   <!-- Unfilled star -->
+                    <span class="big-icon">☆</span>
                     <h3>No favorites yet</h3>
                     <p>Click the <strong>☆</strong> star on any item card to add it to your favorites collection.</p>
                     <div style="display: flex; justify-content: center;">
@@ -2394,7 +2363,6 @@ function buildItemCards(items) {
         imageObserver.observe(img);
         imgContainer.appendChild(img);
 
-        // STAR BUTTON (top-right, pure star)
         const starBtn = document.createElement('button');
         starBtn.className = 'star-btn';
         starBtn.dataset.id = String(item.itemID);
@@ -2405,7 +2373,6 @@ function buildItemCards(items) {
         starBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             toggleFavorite(item.itemID);
-            // Update this star and the modal star if open
             const modalStar = document.getElementById('modalStarBtn');
             if (modalStar && modalStar.dataset.id === String(item.itemID)) {
                 const fav = isFavorited(item.itemID);
@@ -2576,7 +2543,7 @@ function triggerFavImport() {
                     } else if (data.length === 0) {
                         saveFavorites([]);
                     } else {
-                        return; // cancelled
+                        return;
                     }
                     updateFavUI();
                     applyFilters();
@@ -2643,14 +2610,26 @@ window.addEventListener('DOMContentLoaded', () => {
     // Load favorites filter state
     loadFavState();
 
-    if (pendingUpdateToast) {
+    // Handle WebApp update if any
+    if (sessionStorage.getItem('webapp_updated') === 'true') {
         sessionStorage.removeItem('webapp_updated');
+        const versionMsg = WEBAPP_VERSION !== 'Unknown' ? WEBAPP_VERSION : 'latest';
         setTimeout(() => {
-            const versionMsg = WEBAPP_VERSION !== 'Unknown' ? WEBAPP_VERSION : 'latest';
             showToast(`Updated to WebApp version: ${versionMsg}`);
-            showWhatsNew();
+            // Show update whatsnew only if tutorial whatsnew already dismissed
+            if (tutorialWhatsNewDismissed) {
+                showWhatsNew(false);
+            }
         }, 1000);
-        pendingUpdateToast = false;
+    }
+
+    // Settings bubble: attach dismiss handlers
+    const bubbleClose = document.getElementById('settingsBubbleClose');
+    if (bubbleClose) {
+        bubbleClose.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dismissSettingsBubble();
+        });
     }
 
     loadSettings();
@@ -2667,13 +2646,9 @@ window.addEventListener('DOMContentLoaded', () => {
     tagFilter.addEventListener('change', applyFilters);
     typeFilter.addEventListener('change', applyFilters);
     rareFilter.addEventListener('change', applyFilters);
-
-    // Initial favorites UI update after database loads
-    // Will be called after applyFilters in initDatabase
 });
 
 // Override updateFavUI to be called after initial load
-// We'll also call it after database loads
 const origInitDatabase = initDatabase;
 initDatabase = async function(forceSync) {
     await origInitDatabase(forceSync);
