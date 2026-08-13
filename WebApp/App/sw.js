@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ff-catalog-app-v1.0.2'; // Bump version for new assets
+const CACHE_NAME = 'ff-catalog-app-v1.0.3'; // Bump version for new assets
 const ASSETS = [
     './',
     './index.html',
