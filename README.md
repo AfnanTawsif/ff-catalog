@@ -168,6 +168,32 @@ The database is in MessagePack format (`.msgpack`) for max speed, then gzipped (
 
 To update: edit the JSON source (you can generate a json version of the database from `settings > app` inside the webapp), add new entries, modify updated_on value, convert the final json to `.msgpack` using tools like [conventro.com](https://conventro.com/convert/json-to-msgpack), then compress with maximum GZIP.
 
+Example of json format:
+```json
+[
+  {
+    "updated_on": "2026-07-14"
+  },
+  {
+    "icon": "Icon_face_female01_head",
+    "itemID": 101000001,
+    "name": "Nulla",
+    "description": "Nobody knows how she got onto Bermuda, except that she was here before everyone else. Extremely good at adapting to the environment, she is like a chameleon that survives and thrives.",
+    "Rare": "NONE",
+    "type": "Characters"
+  },
+  {
+    "icon": "Icon_OptionalBundle_default",
+    "itemID": 170030004,
+    "name": "Choice Loot Crate",
+    "description": "Choose wisely",
+    "tag": "OB30",
+    "Rare": "BLUE",
+    "type": "Choice Crates"
+  },
+]
+```
+
 **Important:** After updating `database.msgpack.gz`, purge the jsDelivr cache to make sure users get the latest update immediately.  To purge your cdn link, visit: 
 
  [jsDelivr purging tool](https://www.jsdelivr.com/tools/purge)
