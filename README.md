@@ -1,7 +1,7 @@
 [![GitHub Stars](https://img.shields.io/github/stars/AfnanTawsif/ff-catalog?style=for-the-badge&logo=github)](https://github.com/AfnanTawsif/ff-catalog)
 &nbsp; &nbsp;[![Last Commit](https://img.shields.io/github/last-commit/AfnanTawsif/ff-catalog?style=for-the-badge)](https://github.com/AfnanTawsif/ff-catalog/commits/main) <br>
 [![Netlify](https://img.shields.io/badge/Netlify-v1.0.4-blue?logo=netlify&logoColor=white)](https://ff-catalog.netlify.app/)
-&nbsp; &nbsp;[![Database](https://img.shields.io/badge/Database-2026--07--14-2e7d32?logo=databricks&logoColor=white)](https://github.com/AfnanTawsif/ff-catalog/blob/main/database.msgpack.gz)
+&nbsp; &nbsp;[![Database](https://img.shields.io/badge/Database-2026--06--24-2e7d32?logo=databricks&logoColor=white)](https://github.com/AfnanTawsif/ff-catalog/blob/main/database.msgpack.gz)
 ## 🎮 Free Fire Catalog
 ![Free Fire Catalog Banner](./WebApp/App/icons/banner.jpg)
 
@@ -15,7 +15,7 @@
 
 | **Database Version** | **Total Items** |
 |----------------------|-----------------|
-|     2026-07-14       |      33186      |
+|     2026-06-24       |      33186      |
 
 The app checks for a new database every 24 hours, and you can force a sync anytime using the **Sync** button from **Settings -> App**
 
