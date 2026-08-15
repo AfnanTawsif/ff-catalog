@@ -8,6 +8,7 @@
 **A fast, feature-rich Free Fire item catalog for searching, filtering, and browsing thousands of items with offline capability.**
 
 🔗 **Live Website:** [https://ff-catalog.netlify.app/](https://ff-catalog.netlify.app/)  
+
 📲 **Tip:** For the best experience, tap **⋮ → Install app** in your browser.
 ---
 
