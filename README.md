@@ -45,7 +45,7 @@ The app checks for a new database every 24 hours, and you can force a sync anyti
   - Fully responsive – works on phones, tablets, and desktops.
   - Dark theme to reduce eye strain.
 
-- - **⌨️ Shortcuts**
+- **⌨️ Shortcuts**
   - Swipe left/right or press left/right arrow for page navigation.
   - Alt+S to trigger 'jump to page' (search) box on pagination bar.
 
