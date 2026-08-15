@@ -1,5 +1,12 @@
 [
     {
+        "version": "v1.1.1",
+        "logs": [
+            "Fixed navigation gesture: ignores swipes on pagination bar",
+            "Missing icons: Enhanced analysis report + added cache support"
+        ]
+    },
+    {
         "version": "v1.1.0 (Hotfix)",
         "logs": [
             "(+): ADDED 'Reduce visual effects' option for a snappier experience on older devices",
