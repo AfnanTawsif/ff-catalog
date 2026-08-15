@@ -103,11 +103,11 @@ The database and icons are maintained separately from the WebApp code.
 
 - **Database**:
   [`https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/database.msgpack.gz`](https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/database.msgpack.gz)
-  - Original source: [Link](https://ff-item.netlify.app/data.msgpack.gz) — **MIT License**
+  - Original source: [Link](https://ff-item.netlify.app/data.msgpack.gz)
 
 - **PNG Icons:**
   [`https://github.com/AfnanTawsif/ff-catalog/tree/main/PNG`](https://github.com/AfnanTawsif/ff-catalog/tree/main/PNG)
-  - Original source: [Link](https://github.com/ShahGCreator/icon) — **MIT License**
+  - Original source: [Link](https://github.com/ShahGCreator/icon)
 
 The database and icons are **updated regularly** – either when new items are added in the source repository or when I manually curate missing assets.
 
