@@ -3,7 +3,7 @@
         "version": "v1.1.1",
         "logs": [
             "Fixed navigation gesture: ignores swipes on pagination bar",
-            "Missing icons: Enhanced analysis report + added cache support"
+            "Missing icons report: enhanced analysis report + added cache support"
         ]
     },
     {
