@@ -1393,7 +1393,39 @@ document.getElementById('summarizeBtn').addEventListener('click', () => {
 });
 
 // --------------------------------------------------------------
-//  FIND MISSING FILTERS & ICONS
+//  MISSING ICONS CACHE (persistent in localStorage)
+// --------------------------------------------------------------
+const MISSING_ICONS_CACHE_KEY = 'ff_missing_icons_cache';
+
+function saveMissingIconsCache(data) {
+    try {
+        const cacheData = {
+            timestamp: Date.now(),
+            data: data // data is { missingIconIds, blackWhiteMissing, otherMissing }
+        };
+        localStorage.setItem(MISSING_ICONS_CACHE_KEY, JSON.stringify(cacheData));
+    } catch (e) {
+        console.warn('Failed to save missing icons cache', e);
+    }
+}
+
+function loadMissingIconsCache() {
+    try {
+        const raw = localStorage.getItem(MISSING_ICONS_CACHE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        // Check if cache is recent (e.g., within 1 day)
+        if (parsed.timestamp && (Date.now() - parsed.timestamp) < ONE_DAY_MS) {
+            return parsed.data;
+        }
+        return null;
+    } catch (e) {
+        return null;
+    }
+}
+
+// --------------------------------------------------------------
+//  FIND MISSING FILTERS & ICONS  (UPDATED with caching)
 // --------------------------------------------------------------
 document.getElementById('findFiltersBtn').addEventListener('click', async () => {
     if (!allItems.length) return;
@@ -1426,6 +1458,7 @@ document.getElementById('findFiltersBtn').addEventListener('click', async () => 
 
         let missingIconIds = [];
         let iconCheckError = null;
+        let cacheData = null;
 
         try {
             const controller = new AbortController();
@@ -1457,20 +1490,37 @@ document.getElementById('findFiltersBtn').addEventListener('click', async () => 
                         missingIconIds.push(item.itemID);
                     }
                 });
+
+                // Save cache on success
+                const blackWhiteMissing = [];
+                const otherMissing = [];
+                missingIconIds.forEach(id => {
+                    const item = itemsById.get(String(id));
+                    if (item && item.icon === 'UI_Icon_BlackWhite_01') {
+                        blackWhiteMissing.push(id);
+                    } else {
+                        otherMissing.push(id);
+                    }
+                });
+                cacheData = { missingIconIds, blackWhiteMissing, otherMissing };
+                saveMissingIconsCache(cacheData);
             } else {
                 throw new Error("Invalid API response format");
             }
         } catch (e) {
-            iconCheckError = e.name === 'AbortError' ? "Request timed out (10 seconds)" : e.message;
+            iconCheckError = e.name === 'AbortError' ? "Request timed out" : e.message;
+            // Load cache if available
+            cacheData = loadMissingIconsCache();
         }
 
         let reportHTML = "";
 
+        // Missing Filters (always shown, no cache)
         if (missingTags.length === 0 && missingTypes.length === 0 && missingRares.length === 0) {
             reportHTML +=
                 "<h3 class='report-title'>Missing Filters</h3><p>No missing filters found. HTML is up to date with database.</p>";
         } else {
-            reportHTML += "<h3 class='report-title'>Missing Filters</h3>";
+            reportHTML += "<h3 class='report-title'>Missing Filters in html</h3>";
             if (missingTags.length > 0) reportHTML +=
                 `<h4>Tag filters:</h4><ul><li class="copyable-box">${missingTags.join('</li><li class="copyable-box">')}</li></ul>`;
             if (missingTypes.length > 0) reportHTML +=
@@ -1479,15 +1529,68 @@ document.getElementById('findFiltersBtn').addEventListener('click', async () => 
                 `<h4>Rarity filters:</h4><ul><li class="copyable-box">${missingRares.join('</li><li class="copyable-box">')}</li></ul>`;
         }
 
-        reportHTML += "<h3 class='report-title'>Missing Icons</h3>";
+        // Missing Icons section
+        reportHTML += "<h3 class='report-title'>Missing Icons in Repo</h3>";
         if (iconCheckError) {
+            // Error case: show error message, then cached data if available
             reportHTML += `<p style="color: #ff4c4c;">Error checking icons: ${iconCheckError}</p>`;
+            if (cacheData) {
+                reportHTML += `<p><strong>Showing cached report:</strong></p>`;
+                const { blackWhiteMissing, otherMissing } = cacheData;
+                if (blackWhiteMissing.length === 0 && otherMissing.length === 0) {
+                    reportHTML += "<p>All items in the database have their corresponding PNG icons on the repository (cached).</p>";
+                } else {
+                    if (blackWhiteMissing.length > 0) {
+                        reportHTML += `<p>Found <strong>${blackWhiteMissing.length}</strong> missing icons with 'UI_Icon_BlackWhite_01' icon (cached):</p><ul>`;
+                        blackWhiteMissing.forEach(id => {
+                            reportHTML += `<li class="copyable-box">${id}</li>`;
+                        });
+                        reportHTML += `</ul>`;
+                    }
+                    if (otherMissing.length > 0) {
+                        reportHTML += `<p><strong>${otherMissing.length}</strong> other missing icons (cached):</p>`;
+                        reportHTML += `<div class="missing-icons-grid">`;
+                        reportHTML += `<div class="grid-header">Item ID</div><div class="grid-header">Icon Name</div>`;
+                        otherMissing.forEach(id => {
+                            const item = itemsById.get(String(id));
+                            const iconName = item ? item.icon : 'N/A';
+                            reportHTML += `<div class="grid-row">`;
+                            reportHTML += `<div class="id-cell"><span class="copyable-box">${id}</span></div>`;
+                            reportHTML += `<div class="name-cell"><span class="copyable-box">${iconName}</span></div>`;
+                            reportHTML += `</div>`;
+                        });
+                        reportHTML += `</div>`;
+                    }
+                }
+            } else {
+                reportHTML += `<p>No cached report found to show</p>`;
+            }
         } else if (missingIconIds.length === 0) {
             reportHTML += "<p>All items in the database have their corresponding PNG icons on the repository.</p>";
         } else {
-            reportHTML += `<p>Found ${missingIconIds.length} missing icons on repository:</p><ul>`;
-            reportHTML += missingIconIds.map(id => `<li class="copyable-box">${id}</li>`).join('');
-            reportHTML += "</ul>";
+            // Success case: display fresh data (which is already in cacheData)
+            const { blackWhiteMissing, otherMissing } = cacheData || { blackWhiteMissing: [], otherMissing: [] };
+            if (blackWhiteMissing.length > 0) {
+                reportHTML += `<p>Found <strong>${blackWhiteMissing.length}</strong> missing icons with 'UI_Icon_BlackWhite_01' icon:</p><ul>`;
+                blackWhiteMissing.forEach(id => {
+                    reportHTML += `<li class="copyable-box">${id}</li>`;
+                });
+                reportHTML += `</ul>`;
+            }
+            if (otherMissing.length > 0) {
+                reportHTML += `<p><strong>${otherMissing.length}</strong> other missing icons:</p>`;
+                reportHTML += `<div class="missing-icons-grid">`;
+                reportHTML += `<div class="grid-header">Item ID</div><div class="grid-header">Icon Name</div>`;
+                otherMissing.forEach(id => {
+                    const item = itemsById.get(String(id));
+                    const iconName = item ? item.icon : 'N/A';
+                    reportHTML += `<div class="grid-row">`;
+                    reportHTML += `<div class="id-cell"><span class="copyable-box">${id}</span></div>`;
+                    reportHTML += `<div class="name-cell"><span class="copyable-box">${iconName}</span></div>`;
+                    reportHTML += `</div>`;
+                });
+                reportHTML += `</div>`;
+            }
         }
 
         document.getElementById('reportTitle').textContent = "Diagnostic Report";
@@ -2624,13 +2727,18 @@ window.addEventListener('resize', () => {
 // --------------------------------------------------------------
 //  🖐️ SWIPE GESTURES & ⌨️ KEYBOARD SHORTCUTS
 // --------------------------------------------------------------
-// Swipe detection
+// Swipe detection – now ignores touches on the pagination container
 let touchStartX = 0;
 let touchStartY = 0;
 let isSwiping = false;
 
 document.addEventListener('touchstart', (e) => {
+    // Ignore if any modal is open
     if (activeModalStack.length > 0) return;
+
+    // Ignore if touch started inside the pagination container
+    if (paginationContainer.contains(e.target)) return;
+
     const touch = e.touches[0];
     touchStartX = touch.clientX;
     touchStartY = touch.clientY;
@@ -2639,6 +2747,13 @@ document.addEventListener('touchstart', (e) => {
 
 document.addEventListener('touchmove', (e) => {
     if (!isSwiping || activeModalStack.length > 0) return;
+
+    // Extra safety: if touch moved into pagination container, cancel
+    if (paginationContainer.contains(e.target)) {
+        isSwiping = false;
+        return;
+    }
+
     const touch = e.touches[0];
     const deltaX = touch.clientX - touchStartX;
     const deltaY = touch.clientY - touchStartY;
@@ -2660,10 +2775,7 @@ document.addEventListener('touchend', () => {
 document.addEventListener('keydown', (e) => {
     if (activeModalStack.length > 0) return;
     const tag = document.activeElement?.tagName?.toLowerCase();
-    // Ignore if focus is inside an input/textarea/select (except the jump input, but we handle it separately)
     if (tag === 'input' || tag === 'textarea' || tag === 'select') {
-        // Allow arrow keys only if the jump input is focused? Actually we want to prevent arrow navigation while typing.
-        // So we return early for all input fields.
         return;
     }
     if (e.key === 'ArrowLeft') {
