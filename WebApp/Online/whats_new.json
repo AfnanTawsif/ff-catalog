@@ -1,5 +1,24 @@
 [
     {
+        "version": "v1.1.0 (Hotfix)",
+        "logs": [
+            "(+): ADDED 'Reduce visual effects' option for a snappier experience on older devices",
+            "(+): ADDED swipe gestures and left/right arrow shortcuts for switching to the previous/next page",
+            "(+): ADDED Alt+S shortcut to trigger the 'Jump to page' input box",
+            "(+): ADDED animations between page switching",
+            "(+): ADDED duplicate item detection to database info + improved section ordering inside the corresponding menu",
+            "Fixed items getting stuck on loading",
+            "(-): REMOVED infinite scroll mode due to performance issues",
+            "Refactored lazy-loading logic to be based on the current page instead of the viewport",
+            "Fixed fake icon storage usage bug when loaded from cache",
+            "Fixed 'Download database as JSON' option to include the updated_on string",
+            "Reset scroll progress upon switching settings tabs",
+            "Optimized the icon-loading mechanism in the grid and full details menus for more consistent behavior",
+            "Fixed star button's grayish fill color bug",
+            "Reduced the maximum width of the full details menu"
+        ]
+    },
+    {
         "version": "v1.0.4",
         "logs": [
             "Share: Added banner for scrapers"
