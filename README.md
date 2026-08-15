@@ -10,6 +10,7 @@
 🔗 **Live Website:** [https://ff-catalog.netlify.app/](https://ff-catalog.netlify.app/)  
 
 📲 **Tip:** For the best experience, tap **⋮ → Install app** in your browser.
+
 ---
 
 ## 📊 Current Database Status
