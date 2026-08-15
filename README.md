@@ -2,6 +2,9 @@
 &nbsp; &nbsp;[![Last Commit](https://img.shields.io/github/last-commit/AfnanTawsif/ff-catalog?style=for-the-badge)](https://github.com/AfnanTawsif/ff-catalog/commits/main) <br>
 [![Netlify](https://img.shields.io/badge/Netlify-v1.1.0-blue?logo=netlify&logoColor=white)](https://ff-catalog.netlify.app/)
 &nbsp; &nbsp;[![Database](https://img.shields.io/badge/Database-2026--06--24-2e7d32?logo=databricks&logoColor=white)](https://github.com/AfnanTawsif/ff-catalog/blob/main/database.msgpack.gz)
+
+![Netlify](https://img.shields.io/badge/dynamic/regex?url=https://raw.githubusercontent.com/AfnanTawsif/ff-catalog/main/WebApp/App/sw.js&search=const%20CACHE_NAME%20%3D%20'ff-catalog-app-(v%5Cd%2B%5C.%5Cd%2B%5C.%5Cd%2B)'&replace=%241&label=Netlify&color=blue&logo=netlify&logoColor=white)
+
 ## 🎮 Free Fire Catalog
 ![Free Fire Catalog Banner](./WebApp/App/icons/banner.jpg)
 
