@@ -103,11 +103,11 @@ The database and icons are maintained separately from the WebApp code.
 
 - **Database**:
   [`https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/database.msgpack.gz`](https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/database.msgpack.gz)
-  - Original source: [Link](https://ff-item.netlify.app/data.msgpack.gz)
+  - Original source: [Link](https://ff-item.netlify.app/data.msgpack.gz) — **MIT License**
 
 - **PNG Icons:**
   [`https://github.com/AfnanTawsif/ff-catalog/tree/main/PNG`](https://github.com/AfnanTawsif/ff-catalog/tree/main/PNG)
-  - Original source: [Link](https://github.com/ShahGCreator/icon)
+  - Original source: [Link](https://github.com/ShahGCreator/icon) — **MIT License**
 
 The database and icons are **updated regularly** – either when new items are added in the source repository or when I manually curate missing assets.
 
@@ -121,7 +121,22 @@ Want to run your own instance or contribute? Here’s everything you need:
 
 Start by forking [https://github.com/AfnanTawsif/ff-catalog](https://github.com/AfnanTawsif/ff-catalog) and cloning it locally.
 
-### 2. Project Structure
+### 2. License & Open Source Requirement
+
+**This project is licensed under the GNU General Public License v3.0 (GPLv3).**
+
+If you create a modified version or derivative work of this project (including forked versions, custom deployments, or any public instance based on this codebase), you **must**:
+
+- Release your modified source code publicly under the same GPLv3 license.
+- Provide a copy of the GPLv3 license with your distribution.
+- Clearly state the changes you made from the original project.
+- Make the source code accessible to all users of your modified version.
+
+**Note:** The `PNG/` icons and `database.msgpack.gz` are sourced from ShahGCreator and are licensed under the **MIT License**, which is more permissive. This MIT license applies **only** to those asset files, not to the WebApp codebase itself.
+
+For full license details, see the [`LICENSE`](./LICENSE) file in the repository root.
+
+### 3. Project Structure
 
 ```text
 ff-catalog/
@@ -144,7 +159,7 @@ ff-catalog/
 └── LICENSE                           # MIT License
 ```
 
-### 3. Configuration – `script.js`
+### 4. Configuration – `script.js`
 
 All external URLs and author info are centralized in the `CONFIG` object at the top of `script.js`:
 
@@ -164,13 +179,13 @@ const CONFIG = {
 
 Update these to point to your own fork and CDN endpoints.
 
-### 4. Updating Icons
+### 5. Updating Icons
 
 Place new item icon PNGs in the `PNG/` folder, named with the item ID (e.g., `123456789.png`).
 
 If you need to generate app icons for the WebApp (PWA), use [maskable.app](https://maskable.app/) to create `icon-192.png`, `icon-512.png`, etc., and place them in `WebApp/App/icons/`.
 
-### 5. Updating the Database
+### 6. Updating the Database
 
 The database is in MessagePack format (`.msgpack`) for max speed, then gzipped (`.gz`) for faster downloads.
 
@@ -206,7 +221,7 @@ Example of json format:
 
  [jsDelivr purging tool](https://www.jsdelivr.com/tools/purge)
 
-### 6. Updating WebApp Version / Changelog
+### 7. Updating WebApp Version / Changelog
 
 Bump the version in `sw.js`:
 
@@ -220,13 +235,13 @@ Update `WebApp/Online/whats_new.json` with the new version and changes.
 
 Then purge the jsDelivr cache for `whats_new.json`.
 
-### 7. Updating Author Image (optional)
+### 8. Updating Author Image (optional)
 
 Replace `WebApp/Online/author.jpg` with your own picture.
 
 Purge the CDN cache after updating. Note that author image is cached for 24 hours (just like database) to save bandwidth.
 
-### 8. Deploy
+### 9. Deploy
 
 Commit and push to your repository.
 
@@ -234,7 +249,7 @@ If using Netlify, connect your repo and set the publish directory to `WebApp/App
 
 The app will be live at your Netlify URL.
 
-### 9. Auto-Update Behavior
+### 10. Auto-Update Behavior
 
 The WebApp checks for a new Service Worker version on every page reload. If a new `sw.js` is detected, it updates in the background and shows the changelog.
 
