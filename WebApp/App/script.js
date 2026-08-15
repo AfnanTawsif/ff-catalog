@@ -43,6 +43,9 @@ tabBtns.forEach(btn => {
         btn.classList.add('active');
         document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
 
+        const settingsBody = document.querySelector('.settings-body');
+        if (settingsBody) settingsBody.scrollTop = 0;
+
         if (btn.dataset.tab === 'contact') {
             loadAuthorImageWithCache();
         }
@@ -108,7 +111,6 @@ async function fetchSWVersion() {
     if (versionResolve) versionResolve(WEBAPP_VERSION);
     return WEBAPP_VERSION;
 }
-// Start fetching immediately, but we will await it when needed
 fetchSWVersion();
 
 // --------------------------------------------------------------
@@ -126,12 +128,10 @@ function registerServiceWorker() {
             console.log('Service Worker registered successfully');
             reg.update().catch(() => {});
 
-            // Detect when a new worker is found (update)
             reg.addEventListener('updatefound', () => {
                 const newWorker = reg.installing;
                 newWorker.addEventListener('statechange', () => {
                     if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                        // A new version is installed; mark that we are updating
                         sessionStorage.setItem('sw_update_pending', 'true');
                         sessionStorage.setItem('webapp_updated', 'true');
                         sessionStorage.setItem('clear_url_on_load', 'true');
@@ -148,14 +148,12 @@ function registerServiceWorker() {
         });
 }
 
-// Service worker controller change – reload only if this is an update, not first install
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         registerServiceWorker();
 
         let refreshing = false;
         navigator.serviceWorker.addEventListener('controllerchange', () => {
-            // Only reload if we have a pending update flag
             if (sessionStorage.getItem('sw_update_pending') === 'true') {
                 sessionStorage.removeItem('sw_update_pending');
                 if (!refreshing) {
@@ -173,6 +171,7 @@ if ('serviceWorker' in navigator) {
 let allItems = [];
 let filteredItems = [];
 let itemsById = new Map();
+let metadataObj = null;
 let rawDbUpdatedOnText = "Unknown";
 let dbUpdatedOnText = "Unknown";
 let currentPage = 1;
@@ -183,13 +182,6 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 let activeModalStack = [];
 let currentItemModalId = null;
 
-let displayMode = 'multi';
-let infiniteRenderedCount = 0;
-const INFINITE_BATCH = 80;
-let isInfiniteLoading = false;
-let infiniteAllLoaded = false;
-let infiniteObserver = null;
-let infiniteSentinelEl = null;
 let toastTimeout = null;
 
 const rarityMap = {
@@ -308,6 +300,7 @@ function updateFavUI() {
 //  DOM REFS
 // --------------------------------------------------------------
 const grid = document.getElementById('itemGrid');
+const gridWrapper = document.getElementById('gridWrapper');
 const loadingOverlay = document.getElementById('loadingOverlay');
 const loadingText = document.getElementById('loadingText');
 
@@ -333,15 +326,11 @@ const totalPagesUI = document.getElementById('totalPagesUI');
 const pageNumbersEl = document.getElementById('pageNumbers');
 const toast = document.getElementById('toast');
 
-const displayModeSelect = document.getElementById('displayModeSelect');
-
 const iconLimitInput = document.getElementById('iconLimitInput');
 const iconLimitTick = document.getElementById('iconLimitTick');
 const storageBarFill = document.getElementById('storageBarFill');
 const storageBarText = document.getElementById('storageBarText');
 const cleanStorageBtn = document.getElementById('cleanStorageBtn');
-
-infiniteSentinelEl = document.getElementById('infiniteSentinel');
 
 const modalShareBtn = document.getElementById('modalShareBtn');
 
@@ -352,6 +341,12 @@ const viewChangelogsBtn = document.getElementById('viewChangelogsBtn');
 
 const authorImg = document.getElementById('authorImage');
 const authorLoader = document.getElementById('authorImageLoader');
+
+// --------------------------------------------------------------
+//  REDUCE EFFECTS TOGGLE – DOM REFS & STATE
+// --------------------------------------------------------------
+const reduceEffectsToggle = document.getElementById('reduceEffectsToggle');
+const reduceEffectsStatus = document.getElementById('reduceEffectsStatus');
 
 // --------------------------------------------------------------
 //  SEARCH CLEAR BUTTON LOGIC
@@ -489,9 +484,6 @@ async function showWhatsNew(tutorial = false) {
     } else {
         reportContent.innerHTML = `<p class="whatsnew-error">Failed to load from online and cache</p>`;
     }
-
-    // If this was a tutorial (first visit), we don't need to do anything special;
-    // the dialog will be closed by the user.
 }
 
 function renderWhatsNewData(data, container) {
@@ -727,14 +719,12 @@ function openModal(id, data = null) {
         currentItemModalId = data.itemId;
     }
 
-    // --- NEW: Adjust icon name overflow when item modal opens ---
     if (id === 'itemModal') {
         setTimeout(() => {
             const iconNameEl = document.getElementById('modalIconName');
             if (iconNameEl) adjustIconNameOverflow(iconNameEl);
         }, 50);
     }
-    // -----------------------------------------------------------
 
     updateUrlFromStack('push');
 }
@@ -822,7 +812,7 @@ document.addEventListener('keydown', e => {
 });
 
 // --------------------------------------------------------------
-//  ICON NAME OVERFLOW ADJUSTMENT (NEW)
+//  ICON NAME OVERFLOW ADJUSTMENT
 // --------------------------------------------------------------
 function adjustIconNameOverflow(el) {
     if (!el) return;
@@ -852,30 +842,57 @@ async function populateItemModal(item) {
 
     currentShareItemId = item.itemID;
 
+    // --- Clean up previous state ---
     if (modalImg.dataset.objectUrl) {
         URL.revokeObjectURL(modalImg.dataset.objectUrl);
         delete modalImg.dataset.objectUrl;
     }
     modalImg.removeAttribute('src');
     modalImg.classList.remove('loaded');
+    delete modalImg.dataset.loaded;   // Critical: clear stale flag
     modalImg.dataset.failed = "false";
+    modalImg.onload = null;
+    modalImg.onerror = null;
+    // ------------------------------
 
     try {
-        const cache = await caches.open('ff-icons');
-        let response = await cache.match(iconUrl);
+        const { blob, fromCache } = await loadImageWithRetry(iconUrl);
+        const objectUrl = URL.createObjectURL(blob);
+        modalImg.dataset.objectUrl = objectUrl;
 
-        if (!response) {
-            response = await fetch(iconUrl);
-            if (!response.ok) throw new Error('Image fetch failed');
-            cache.put(iconUrl, response.clone());
+        // --- Robust image loading with double RAF to ensure paint ---
+        const markLoaded = () => {
+            if (modalImg.dataset.loaded) return;
+            modalImg.dataset.loaded = 'true';
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    modalImg.classList.add('loaded');
+                });
+            });
+        };
+
+        modalImg.onload = markLoaded;
+        modalImg.onerror = () => {
+            modalImg.src = fallbackUrl;
+            markLoaded();
+        };
+
+        modalImg.src = objectUrl;
+
+        if (modalImg.complete && modalImg.naturalWidth > 0) {
+            if (modalImg.decode) {
+                modalImg.decode().then(markLoaded).catch(() => markLoaded());
+            } else {
+                markLoaded();
+            }
+        } else {
+            if (modalImg.decode) {
+                modalImg.decode().then(markLoaded).catch(() => {});
+            }
         }
 
-        const blob = await response.blob();
-        const objectUrl = URL.createObjectURL(blob);
-        modalImg.src = objectUrl;
-        modalImg.dataset.objectUrl = objectUrl;
-        modalImg.classList.add('loaded');
-
+        if (!fromCache) recordImageSize(blob.size);
+        // -------------------------------------------------------
     } catch (err) {
         console.warn(`Failed to load icon for ${item.itemID}:`, err);
         modalImg.src = fallbackUrl;
@@ -886,8 +903,6 @@ async function populateItemModal(item) {
 
     const iconNameEl = document.getElementById('modalIconName');
     iconNameEl.textContent = item.icon || 'Undefined';
-
-    // --- NEW: adjust overflow right after setting text ---
     adjustIconNameOverflow(iconNameEl);
 
     let badgesHTML = `<span class="badge badge-id">ID: ${item.itemID}</span>`;
@@ -1134,7 +1149,6 @@ mainTitle.addEventListener('click', goHome);
 //  SETTINGS BUTTON
 // --------------------------------------------------------------
 document.getElementById('openSettings').addEventListener('click', () => {
-    // If the settings bubble is showing, dismiss it (tutorial)
     if (settingsBubbleShown) {
         dismissSettingsBubble();
     }
@@ -1150,7 +1164,7 @@ document.getElementById('openSettings').addEventListener('click', () => {
 //  VIEW CHANGELOGS BUTTON
 // --------------------------------------------------------------
 viewChangelogsBtn.addEventListener('click', () => {
-    showWhatsNew(false); // manual open, not tutorial
+    showWhatsNew(false);
 });
 
 // --------------------------------------------------------------
@@ -1211,18 +1225,12 @@ document.getElementById('updateWebAppBtn').addEventListener('click', async () =>
             return;
         }
 
-        // Store the new version in localStorage so we can show it after reload
         localStorage.setItem('new_sw_version', newVersion);
 
-        // Set flags for update and trigger update
         sessionStorage.setItem('webapp_updated', 'true');
         sessionStorage.setItem('clear_url_on_load', 'true');
-        // sw_update_pending will be set by the SW's updatefound event
         await swRegistration.update();
         showToast(`Updating to ${newVersion}...`);
-
-        // The page will reload when the new SW takes over (via controllerchange)
-        // The reload will show the toast again on the new page.
 
     } catch (err) {
         console.error(err);
@@ -1263,9 +1271,16 @@ function triggerLocalDownload(blob, filename) {
 }
 
 document.getElementById('dlJson').addEventListener('click', () => {
-    if (!allItems.length) return;
-    triggerLocalDownload(new Blob([JSON.stringify(allItems, null, 2)], { type: 'application/json' }),
-        'ff-catalog.json');
+    if (!allItems.length) {
+        showToast("No data to export");
+        return;
+    }
+    const meta = metadataObj || { updated_on: "Unknown" };
+    const jsonData = [meta, ...allItems];
+    triggerLocalDownload(
+        new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' }),
+        'ff-catalog.json'
+    );
 });
 
 document.getElementById('dlMsgpack').addEventListener('click', async () => {
@@ -1303,28 +1318,23 @@ document.getElementById('summarizeBtn').addEventListener('click', () => {
     reportHTML += `<p><strong>Updated on:</strong> ${dbUpdatedOnText}</p>`;
     reportHTML += `<p><strong>Total Items Found:</strong> ${allItems.length}</p>`;
 
-    let typeCounts = {};
-    let rareCounts = {};
-
+    const idCounts = {};
     allItems.forEach(item => {
-        const t = item.type || 'Undefined';
-        const r = item.Rare || 'Undefined';
-        typeCounts[t] = (typeCounts[t] || 0) + 1;
-        rareCounts[r] = (rareCounts[r] || 0) + 1;
+        const id = String(item.itemID);
+        idCounts[id] = (idCounts[id] || 0) + 1;
     });
+    const duplicates = Object.keys(idCounts).filter(id => idCounts[id] > 1);
 
-    reportHTML += `<h3 class="report-title">By Type</h3><div class="summary-section">`;
-    Object.keys(typeCounts).sort().forEach(k => {
-        reportHTML += `<div class="summary-row copyable-box"><span>${k}</span> <span>${typeCounts[k]}</span></div>`;
-    });
-    reportHTML += `</div>`;
-
-    reportHTML += `<h3 class="report-title">By Rarity</h3><div class="summary-section">`;
-    Object.keys(rareCounts).sort().forEach(k => {
-        const mappedName = rarityMap[k] || k;
-        reportHTML += `<div class="summary-row copyable-box"><span>${mappedName}</span> <span>${rareCounts[k]}</span></div>`;
-    });
-    reportHTML += `</div>`;
+    reportHTML += `<h3 class="report-title">Duplicated Items</h3>`;
+    if (duplicates.length === 0) {
+        reportHTML += `<p>No duplicated items found.</p>`;
+    } else {
+        reportHTML += `<p>Found ${duplicates.length} duplicated item IDs:</p><ul>`;
+        duplicates.forEach(id => {
+            reportHTML += `<li class="copyable-box">${id} (appears ${idCounts[id]} times)</li>`;
+        });
+        reportHTML += `</ul>`;
+    }
 
     const extraKeys = new Set();
     allItems.forEach(item => {
@@ -1344,6 +1354,31 @@ document.getElementById('summarizeBtn').addEventListener('click', () => {
         });
         reportHTML += `</ul>`;
     }
+
+    let typeCounts = {};
+    allItems.forEach(item => {
+        const t = item.type || 'Undefined';
+        typeCounts[t] = (typeCounts[t] || 0) + 1;
+    });
+
+    reportHTML += `<h3 class="report-title">Count by type</h3><div class="summary-section">`;
+    Object.keys(typeCounts).sort().forEach(k => {
+        reportHTML += `<div class="summary-row copyable-box"><span>${k}</span> <span>${typeCounts[k]}</span></div>`;
+    });
+    reportHTML += `</div>`;
+
+    let rareCounts = {};
+    allItems.forEach(item => {
+        const r = item.Rare || 'Undefined';
+        rareCounts[r] = (rareCounts[r] || 0) + 1;
+    });
+
+    reportHTML += `<h3 class="report-title">Count by rarity</h3><div class="summary-section">`;
+    Object.keys(rareCounts).sort().forEach(k => {
+        const mappedName = rarityMap[k] || k;
+        reportHTML += `<div class="summary-row copyable-box"><span>${mappedName}</span> <span>${rareCounts[k]}</span></div>`;
+    });
+    reportHTML += `</div>`;
 
     document.getElementById('reportTitle').textContent = "Database info";
     document.getElementById('reportContent').innerHTML = reportHTML;
@@ -1486,13 +1521,12 @@ function loadSettings() {
     if (localStorage.getItem('clickAction')) clickAction.value = localStorage.getItem('clickAction');
     if (localStorage.getItem('downloadAs')) downloadAs.value = localStorage.getItem('downloadAs');
 
-    const savedMode = localStorage.getItem('displayMode') || 'multi';
-    displayModeSelect.value = savedMode;
-    displayMode = savedMode;
-
     iconLimitInput.value = localStorage.getItem('iconLimitMB') || '15';
     updateSearchHint();
-    applyDisplayMode();
+
+    const savedReduceEffects = localStorage.getItem('reduceEffects') === 'true';
+    reduceEffectsToggle.checked = savedReduceEffects;
+    applyReduceEffects(savedReduceEffects);
 }
 
 function saveSettings() {
@@ -1502,8 +1536,31 @@ function saveSettings() {
     localStorage.setItem('rangeIcon', rangeIcon.checked);
     localStorage.setItem('clickAction', clickAction.value);
     localStorage.setItem('downloadAs', downloadAs.value);
-    localStorage.setItem('displayMode', displayMode);
+    localStorage.setItem('reduceEffects', String(reduceEffectsToggle.checked));
 }
+
+// --------------------------------------------------------------
+//  REDUCE EFFECTS – APPLY CLASS & UPDATE STATUS
+// --------------------------------------------------------------
+function applyReduceEffects(enabled) {
+    const body = document.body;
+    if (enabled) {
+        body.classList.add('reduce-effects');
+        reduceEffectsStatus.textContent = 'On';
+        reduceEffectsStatus.className = 'toggle-status on';
+    } else {
+        body.classList.remove('reduce-effects');
+        reduceEffectsStatus.textContent = 'Off';
+        reduceEffectsStatus.className = 'toggle-status off';
+    }
+}
+
+reduceEffectsToggle.addEventListener('change', function() {
+    const enabled = this.checked;
+    applyReduceEffects(enabled);
+    localStorage.setItem('reduceEffects', String(enabled));
+    saveSettings();
+});
 
 [rangeName, rangeID, rangeDesc, rangeIcon].forEach(cb => cb.addEventListener('change', () => {
     updateSearchHint();
@@ -1511,30 +1568,6 @@ function saveSettings() {
 }));
 clickAction.addEventListener('change', saveSettings);
 downloadAs.addEventListener('change', saveSettings);
-
-displayModeSelect.addEventListener('change', function() {
-    displayMode = this.value;
-    saveSettings();
-    applyDisplayMode();
-    applyFilters();
-});
-
-function applyDisplayMode() {
-    if (displayMode === 'infinite') {
-        paginationContainer.style.display = 'none';
-        infiniteSentinelEl.style.display = 'block';
-    } else {
-        paginationContainer.style.display = 'flex';
-        infiniteSentinelEl.style.display = 'none';
-        if (infiniteObserver) {
-            infiniteObserver.disconnect();
-            infiniteObserver = null;
-        }
-        infiniteAllLoaded = false;
-        infiniteRenderedCount = 0;
-        isInfiniteLoading = false;
-    }
-}
 
 // --------------------------------------------------------------
 //  STORAGE/IMAGE CACHE TRACKING
@@ -1776,7 +1809,7 @@ async function saveLocalCache(rawData) {
 }
 
 // --------------------------------------------------------------
-//  ROBUST IMAGE LOADER
+//  ROBUST IMAGE LOADER – now returns { blob, fromCache }
 // --------------------------------------------------------------
 async function loadImageWithRetry(url) {
     const CACHE_TIMEOUT = 2000;
@@ -1815,63 +1848,21 @@ async function loadImageWithRetry(url) {
 
     try {
         let blob = await withTimeout(attemptCache(), CACHE_TIMEOUT);
-        if (blob) return blob;
+        if (blob) return { blob, fromCache: true };
 
         await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
         blob = await withTimeout(attemptCache(), CACHE_TIMEOUT);
-        if (blob) return blob;
+        if (blob) return { blob, fromCache: true };
 
-        return await loadFromNetworkAndCache();
+        blob = await loadFromNetworkAndCache();
+        return { blob, fromCache: false };
     } catch (err) {
         throw err;
     }
 }
 
 // --------------------------------------------------------------
-//  MEMORY EFFICIENT LAZY LOADER
-// --------------------------------------------------------------
-const imageObserver = new IntersectionObserver((entries) => {
-    entries.forEach(async entry => {
-        const img = entry.target;
-        if (entry.isIntersecting) {
-            if (!img.dataset.loading && !img.getAttribute('src')) {
-                img.dataset.loading = "true";
-                try {
-                    const url = img.dataset.src;
-                    const blob = await loadImageWithRetry(url);
-                    const objectUrl = URL.createObjectURL(blob);
-                    img.src = objectUrl;
-                    img.dataset.objectUrl = objectUrl;
-                    img.classList.add('loaded');
-
-                    recordImageSize(blob.size);
-
-                    if (currentIconStorageSize + pendingSizeAdd > (iconStorageLimitMB * 1024 * 1024)) {
-                        flushStorageUpdate();
-                        checkAndCleanStorage();
-                    }
-                } catch (e) {
-                    console.warn('Failed to load image:', img.dataset.src, e);
-                    img.src = CONFIG.FALLBACK_IMAGE_URL;
-                    img.classList.add('loaded');
-                } finally {
-                    img.dataset.loading = "false";
-                }
-            }
-        } else {
-            if (img.dataset.objectUrl) {
-                URL.revokeObjectURL(img.dataset.objectUrl);
-                img.removeAttribute('src');
-                img.classList.remove('loaded');
-                delete img.dataset.objectUrl;
-                delete img.dataset.loading;
-            }
-        }
-    });
-}, { rootMargin: '400px' });
-
-// --------------------------------------------------------------
-//  ANIMATION PAUSE OBSERVER
+//  ANIMATION PAUSE OBSERVER (still uses IntersectionObserver but only for animations, not for loading)
 // --------------------------------------------------------------
 let animationObserver = null;
 
@@ -1953,7 +1944,7 @@ function rebuildItemsMap() {
 }
 
 // --------------------------------------------------------------
-//  DATABASE SYNC & PARSING LOGIC
+//  DATABASE SYNC & PARSING LOGIC (UPDATED to store metadata)
 // --------------------------------------------------------------
 function parseAndSetDatabase(uint8Array) {
     try {
@@ -1961,16 +1952,20 @@ function parseAndSetDatabase(uint8Array) {
         if (Array.isArray(decoded)) {
             if (decoded.length > 0 && typeof decoded[0] === 'object' && decoded[0] !== null && (decoded[0]
                     .updated_on || decoded[0].version || decoded[0]._metadata)) {
-                rawDbUpdatedOnText = decoded[0].updated_on || decoded[0].version || "Unknown";
+                metadataObj = decoded[0];
+                rawDbUpdatedOnText = metadataObj.updated_on || metadataObj.version || "Unknown";
                 allItems = decoded.slice(1);
             } else {
+                metadataObj = { updated_on: "Unknown" };
                 allItems = decoded;
                 rawDbUpdatedOnText = "Unknown";
             }
         } else if (typeof decoded === 'object' && decoded !== null) {
+            metadataObj = { updated_on: decoded.updated_on || "Unknown" };
             allItems = decoded.items || decoded.data || [];
-            rawDbUpdatedOnText = decoded.updated_on || "Unknown";
+            rawDbUpdatedOnText = metadataObj.updated_on;
         } else {
+            metadataObj = { updated_on: "Unknown" };
             allItems = [];
             rawDbUpdatedOnText = "Unknown";
         }
@@ -1991,7 +1986,6 @@ function parseAndSetDatabase(uint8Array) {
 async function initDatabase(forceSync = false) {
     grid.innerHTML = '';
     paginationContainer.style.display = 'none';
-    infiniteSentinelEl.style.display = 'none';
     loadingOverlay.classList.add('active');
 
     reqDataBtns.forEach(b => b.disabled = true);
@@ -2014,13 +2008,10 @@ async function initDatabase(forceSync = false) {
         if (!initialLoadDone) {
             initialLoadDone = true;
             showCreditToastIfNeeded();
-            // First visit: show What's New tutorial (if not seen before)
             if (!localStorage.getItem('ff_visited')) {
                 localStorage.setItem('ff_visited', 'true');
-                // Delay to ensure DOM is ready and other operations settled
                 setTimeout(() => showWhatsNew(true), 500);
             }
-            // Always show settings bubble after a delay (unless already dismissed)
             setTimeout(() => showSettingsBubbleIfNeeded(), 1000);
         }
 
@@ -2057,6 +2048,8 @@ async function initDatabase(forceSync = false) {
             rawData = result.rawData;
             items = result.items;
             updatedOn = result.updatedOn;
+            metadataObj = { updated_on: updatedOn || "Unknown" };
+            rawDbUpdatedOnText = updatedOn || "Unknown";
         } else {
             loadingText.textContent = 'Getting latest database...';
             const dbUrl = CONFIG.DATABASE_URL + '?nocache=' + Date.now();
@@ -2086,12 +2079,13 @@ async function initDatabase(forceSync = false) {
                 items = [];
                 updatedOn = "Unknown";
             }
+            metadataObj = { updated_on: updatedOn || "Unknown" };
+            rawDbUpdatedOnText = updatedOn || "Unknown";
         }
 
         if (!items || !rawData) throw new Error('Failed to get data');
 
         loadingText.textContent = 'Loading data...';
-        rawDbUpdatedOnText = updatedOn || "Unknown";
         allItems = items;
         rebuildItemsMap();
         dbUpdatedOnText = formatDatabaseDate(rawDbUpdatedOnText);
@@ -2110,13 +2104,10 @@ async function initDatabase(forceSync = false) {
         if (!initialLoadDone && !forceSync) {
             initialLoadDone = true;
             showCreditToastIfNeeded();
-            // First visit: show What's New tutorial (if not seen before)
             if (!localStorage.getItem('ff_visited')) {
                 localStorage.setItem('ff_visited', 'true');
-                // Delay to ensure DOM is ready and other operations settled
                 setTimeout(() => showWhatsNew(true), 500);
             }
-            // Always show settings bubble after a delay (unless already dismissed)
             setTimeout(() => showSettingsBubbleIfNeeded(), 1000);
         }
 
@@ -2135,7 +2126,6 @@ async function initDatabase(forceSync = false) {
         }
         loadingOverlay.classList.remove('active');
         restoreButtons();
-        applyDisplayMode();
         syncModalsFromUrl();
     }
 }
@@ -2198,18 +2188,13 @@ function applyFilters() {
     totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
     if (totalPages === 0) totalPages = 1;
 
-    infiniteRenderedCount = 0;
-    infiniteAllLoaded = false;
-    isInfiniteLoading = false;
-    if (infiniteObserver) {
-        infiniteObserver.disconnect();
-        infiniteObserver = null;
-    }
+    const oldPage = currentPage;
+    currentPage = Math.min(oldPage, totalPages);
+    if (currentPage < 1) currentPage = 1;
 
-    currentPage = 1;
     totalPagesUI.textContent = totalPages;
 
-    renderItems();
+    renderPage();
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     updateFavUI();
@@ -2226,34 +2211,31 @@ function updateSearchHint() {
 }
 
 // --------------------------------------------------------------
-//  RENDER ITEMS
+//  RENDER ITEMS – with swipe animation support
 // --------------------------------------------------------------
-function renderItems() {
-    if (displayMode === 'multi') {
-        renderPage();
-    } else {
-        renderInfinite();
-    }
-}
+let isTransitioning = false;
+let pendingPageChange = null;
 
-// --------------------------------------------------------------
-//  MULTI-PAGE RENDER
-// --------------------------------------------------------------
-function renderPage() {
-    if (infiniteObserver) {
-        infiniteObserver.disconnect();
-        infiniteObserver = null;
-    }
-    infiniteSentinelEl.style.display = 'none';
-
+function renderPage(direction) {
+    // direction: 'forward' or 'backward' or null (no animation / initial render)
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     const end = Math.min(start + ITEMS_PER_PAGE, filteredItems.length);
     const pageItems = filteredItems.slice(start, end);
 
+    // Revoke all object URLs from current grid images before clearing
+    const currentImgs = grid.querySelectorAll('img');
+    currentImgs.forEach(img => {
+        if (img.dataset.objectUrl) {
+            URL.revokeObjectURL(img.dataset.objectUrl);
+            delete img.dataset.objectUrl;
+        }
+        img.removeAttribute('src');
+        img.classList.remove('loaded');
+    });
+
     if (animationObserver) {
         animationObserver.disconnect();
     }
-    imageObserver.disconnect();
     grid.innerHTML = '';
 
     if (pageItems.length === 0) {
@@ -2282,6 +2264,7 @@ function renderPage() {
             `;
         }
         paginationContainer.style.display = 'none';
+        updatePaginationUI();
         return;
     }
 
@@ -2289,98 +2272,27 @@ function renderPage() {
     grid.appendChild(frag);
     paginationContainer.style.display = 'flex';
     updatePaginationUI();
-    applyDisplayMode();
 
     initAnimationObserver();
     document.querySelectorAll('.card').forEach(card => animationObserver.observe(card));
+
+    // If direction is provided, apply the slide-in animation to the grid
+    if (direction === 'forward') {
+        grid.classList.add('slide-in-right');
+        setTimeout(() => {
+            grid.classList.remove('slide-in-right');
+        }, 350);
+    } else if (direction === 'backward') {
+        grid.classList.add('slide-in-left');
+        setTimeout(() => {
+            grid.classList.remove('slide-in-left');
+        }, 350);
+    }
 }
 
 // --------------------------------------------------------------
-//  INFINITE SCROLL RENDER
+//  BUILD ITEM CARDS – with robust image loading using double RAF
 // --------------------------------------------------------------
-function renderInfinite() {
-    paginationContainer.style.display = 'none';
-    infiniteSentinelEl.style.display = 'block';
-
-    if (infiniteObserver) {
-        infiniteObserver.disconnect();
-        infiniteObserver = null;
-    }
-
-    infiniteRenderedCount = 0;
-    infiniteAllLoaded = false;
-    isInfiniteLoading = false;
-
-    if (animationObserver) {
-        animationObserver.disconnect();
-    }
-    imageObserver.disconnect();
-    grid.innerHTML = '';
-
-    if (filteredItems.length === 0) {
-        if (favFilterActive && getFavorites().length === 0) {
-            grid.innerHTML = `
-                <div class="fav-empty-state">
-                    <span class="big-icon">☆</span>
-                    <h3>No favorites yet</h3>
-                    <p>Click the <strong>☆</strong> star on any item card to add it to your favorites collection.</p>
-                    <div style="display: flex; justify-content: center;">
-                        <button id="favEmptyImportBtn" class="action-btn-small">
-                            <svg viewBox="0 0 24 24" width="16" height="16"><path d="M19 9h-4v7H9v-7H5l7-7 7 7zM5 18v2h14v-2H5z"/></svg>
-                            Import Favorites
-                        </button>
-                    </div>
-                </div>
-            `;
-            document.getElementById('favEmptyImportBtn')?.addEventListener('click', triggerFavImport);
-        } else {
-            grid.innerHTML = `
-                <div class="empty-search-state">
-                    <span class="empty-icon">❓</span>
-                    <h3>No items found</h3>
-                    <p>Try adjusting your search or filters.</p>
-                </div>
-            `;
-        }
-        infiniteSentinelEl.style.display = 'none';
-        return;
-    }
-
-    loadInfiniteBatch();
-    setupInfiniteObserver();
-}
-
-function loadInfiniteBatch() {
-    if (isInfiniteLoading) return;
-    if (infiniteAllLoaded) return;
-    if (infiniteRenderedCount >= filteredItems.length) {
-        infiniteAllLoaded = true;
-        updateSentinelState();
-        return;
-    }
-
-    isInfiniteLoading = true;
-    updateSentinelState(true);
-
-    const start = infiniteRenderedCount;
-    const end = Math.min(start + INFINITE_BATCH, filteredItems.length);
-    const batch = filteredItems.slice(start, end);
-
-    const frag = buildItemCards(batch);
-    grid.appendChild(frag);
-
-    infiniteRenderedCount = end;
-
-    if (infiniteRenderedCount >= filteredItems.length) {
-        infiniteAllLoaded = true;
-        updateSentinelState(false, true);
-    } else {
-        updateSentinelState(false);
-    }
-
-    isInfiniteLoading = false;
-}
-
 function buildItemCards(items) {
     const frag = document.createDocumentFragment();
     items.forEach((item, index) => {
@@ -2392,10 +2304,58 @@ function buildItemCards(items) {
         imgContainer.className = 'img-container';
 
         const img = document.createElement('img');
-        img.dataset.src = CONFIG.CDN_BASE_URL + item.itemID + '.png';
+        const iconUrl = CONFIG.CDN_BASE_URL + item.itemID + '.png';
         img.alt = item.name || 'Unnamed';
 
-        imageObserver.observe(img);
+        loadImageWithRetry(iconUrl)
+            .then(({ blob, fromCache }) => {
+                const objectUrl = URL.createObjectURL(blob);
+                img.dataset.objectUrl = objectUrl;
+
+                const markLoaded = () => {
+                    if (img.dataset.loaded) return;
+                    img.dataset.loaded = 'true';
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            img.classList.add('loaded');
+                        });
+                    });
+                };
+
+                img.onload = markLoaded;
+                img.onerror = () => {
+                    img.src = CONFIG.FALLBACK_IMAGE_URL;
+                    markLoaded();
+                };
+
+                img.src = objectUrl;
+
+                if (img.complete && img.naturalWidth > 0) {
+                    if (img.decode) {
+                        img.decode().then(markLoaded).catch(() => markLoaded());
+                    } else {
+                        markLoaded();
+                    }
+                } else {
+                    if (img.decode) {
+                        img.decode().then(markLoaded).catch(() => {});
+                    }
+                }
+
+                if (!fromCache) {
+                    recordImageSize(blob.size);
+                    if (currentIconStorageSize + pendingSizeAdd > (iconStorageLimitMB * 1024 * 1024)) {
+                        flushStorageUpdate();
+                        checkAndCleanStorage();
+                    }
+                }
+            })
+            .catch(err => {
+                console.warn('Failed to load image:', iconUrl, err);
+                img.src = CONFIG.FALLBACK_IMAGE_URL;
+                img.classList.add('loaded');
+            });
+
         imgContainer.appendChild(img);
 
         const starBtn = document.createElement('button');
@@ -2437,48 +2397,8 @@ function buildItemCards(items) {
 
         card.addEventListener('click', () => handleItemClick(item));
         frag.appendChild(card);
-
-        if (animationObserver) {
-            animationObserver.observe(card);
-        }
     });
     return frag;
-}
-
-function setupInfiniteObserver() {
-    if (infiniteObserver) {
-        infiniteObserver.disconnect();
-    }
-    infiniteObserver = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && !isInfiniteLoading && !infiniteAllLoaded) {
-            loadInfiniteBatch();
-        }
-    }, { rootMargin: '200px' });
-
-    if (infiniteSentinelEl) {
-        infiniteObserver.observe(infiniteSentinelEl);
-    }
-}
-
-function updateSentinelState(loading = false, done = false) {
-    if (!infiniteSentinelEl) return;
-    if (done) {
-        infiniteSentinelEl.className = 'infinite-sentinel done';
-        infiniteSentinelEl.innerHTML = '✨ All items loaded';
-        return;
-    }
-    if (loading) {
-        infiniteSentinelEl.className = 'infinite-sentinel';
-        infiniteSentinelEl.innerHTML = '<span class="spinner-small"></span> Loading more...';
-        return;
-    }
-    if (infiniteAllLoaded) {
-        infiniteSentinelEl.className = 'infinite-sentinel done';
-        infiniteSentinelEl.innerHTML = '✨ All items loaded';
-        return;
-    }
-    infiniteSentinelEl.className = 'infinite-sentinel';
-    infiniteSentinelEl.innerHTML = '<span class="spinner-small"></span> Scroll for more';
 }
 
 // --------------------------------------------------------------
@@ -2495,16 +2415,68 @@ function updatePaginationUI() {
     }
 }
 
+// --------------------------------------------------------------
+//  GO TO PAGE – with swipe animation
+// --------------------------------------------------------------
 function goToPage(pageNum) {
+    if (isTransitioning) {
+        pendingPageChange = pageNum;
+        return;
+    }
     if (pageNum < 1 || pageNum > totalPages) return;
-    if (pageNum !== currentPage) {
-        currentPage = pageNum;
-        renderPage();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        const activeBtn = pageNumbersEl.children[pageNum - 1];
-        if (activeBtn) {
-            activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    if (pageNum === currentPage) return;
+
+    const direction = pageNum > currentPage ? 'forward' : 'backward';
+    const oldPage = currentPage;
+    currentPage = pageNum;
+
+    // Slide out old page
+    const slideOutClass = direction === 'forward' ? 'slide-out-left' : 'slide-out-right';
+    grid.classList.add(slideOutClass);
+
+    isTransitioning = true;
+
+    // After slide-out animation completes, render new page with slide-in
+    const onAnimationEnd = () => {
+        grid.removeEventListener('animationend', onAnimationEnd);
+        grid.classList.remove(slideOutClass);
+
+        // Render the new page content with slide-in
+        renderPage(direction);
+
+        isTransitioning = false;
+
+        // Check for pending page change
+        if (pendingPageChange !== null) {
+            const next = pendingPageChange;
+            pendingPageChange = null;
+            goToPage(next);
         }
+    };
+
+    grid.addEventListener('animationend', onAnimationEnd);
+
+    // Fallback: if animation doesn't fire for some reason
+    setTimeout(() => {
+        if (isTransitioning) {
+            grid.removeEventListener('animationend', onAnimationEnd);
+            grid.classList.remove(slideOutClass);
+            renderPage(direction);
+            isTransitioning = false;
+            if (pendingPageChange !== null) {
+                const next = pendingPageChange;
+                pendingPageChange = null;
+                goToPage(next);
+            }
+        }
+    }, 400);
+
+    // Update pagination UI immediately for visual feedback
+    updatePaginationUI();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const activeBtn = pageNumbersEl.children[pageNum - 1];
+    if (activeBtn) {
+        activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     }
 }
 
@@ -2650,39 +2622,90 @@ window.addEventListener('resize', () => {
 });
 
 // --------------------------------------------------------------
+//  🖐️ SWIPE GESTURES & ⌨️ KEYBOARD SHORTCUTS
+// --------------------------------------------------------------
+// Swipe detection
+let touchStartX = 0;
+let touchStartY = 0;
+let isSwiping = false;
+
+document.addEventListener('touchstart', (e) => {
+    if (activeModalStack.length > 0) return;
+    const touch = e.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+    isSwiping = true;
+}, { passive: true });
+
+document.addEventListener('touchmove', (e) => {
+    if (!isSwiping || activeModalStack.length > 0) return;
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - touchStartX;
+    const deltaY = touch.clientY - touchStartY;
+    if (Math.abs(deltaX) > 50 && Math.abs(deltaY) < 30) {
+        isSwiping = false;
+        if (deltaX < 0) {
+            goToPage(currentPage + 1);
+        } else {
+            goToPage(currentPage - 1);
+        }
+    }
+}, { passive: true });
+
+document.addEventListener('touchend', () => {
+    isSwiping = false;
+}, { passive: true });
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+    if (activeModalStack.length > 0) return;
+    const tag = document.activeElement?.tagName?.toLowerCase();
+    // Ignore if focus is inside an input/textarea/select (except the jump input, but we handle it separately)
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') {
+        // Allow arrow keys only if the jump input is focused? Actually we want to prevent arrow navigation while typing.
+        // So we return early for all input fields.
+        return;
+    }
+    if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        goToPage(currentPage - 1);
+    } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        goToPage(currentPage + 1);
+    } else if (e.key === 's' && e.altKey) {
+        e.preventDefault();
+        const btn = document.getElementById('searchPageBtn');
+        if (btn) btn.click();
+    }
+});
+
+// --------------------------------------------------------------
 //  STARTUP INITIALIZATION
 // --------------------------------------------------------------
 window.addEventListener('DOMContentLoaded', async () => {
-    // Load favorites filter state
     loadFavState();
 
-    // Check if this is an update reload
     if (sessionStorage.getItem('webapp_updated') === 'true') {
         isUpdateReload = true;
         sessionStorage.removeItem('webapp_updated');
 
-        // Wait for the version to be fetched (or use stored version)
-        await versionPromise;  // ensures WEBAPP_VERSION is set
-
-        // Use stored version if available (manual update), otherwise use fetched version
+        await versionPromise;
         const storedVersion = localStorage.getItem('new_sw_version');
         if (storedVersion) {
             localStorage.removeItem('new_sw_version');
         }
         const versionMsg = storedVersion || WEBAPP_VERSION || 'latest';
 
-        // Show update toast and changelog
         setTimeout(() => {
             showToast(`Updated to WebApp version: ${versionMsg}`);
             setTimeout(() => {
-                showWhatsNew(false); // update changelog, not tutorial
+                showWhatsNew(false);
             }, 500);
         }, 300);
     } else {
         isUpdateReload = false;
     }
 
-    // Settings bubble: attach dismiss handlers
     const bubbleClose = document.getElementById('settingsBubbleClose');
     if (bubbleClose) {
         bubbleClose.addEventListener('click', (e) => {
@@ -2707,7 +2730,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     rareFilter.addEventListener('change', applyFilters);
 });
 
-// Override updateFavUI to be called after initial load
 const origInitDatabase = initDatabase;
 initDatabase = async function(forceSync) {
     await origInitDatabase(forceSync);
