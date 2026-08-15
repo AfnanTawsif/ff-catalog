@@ -26,51 +26,51 @@ The app checks for a new database every 24 hours, and you can force a sync anyti
 
 ## 🚀 WebApp Overview
 
-- **🏎️ Blazing Performance**
+**🏎️ Blazing Performance**
   - 'Reduce visual effects' option for best performance on weak devices.
   - Lazy-loads images & animations only for items on current page.
   - Uses a **Web Worker** to parse the MessagePack database off the main thread – no UI jank.
   - Decompression (`DecompressionStream`) is hardware-accelerated in modern browsers.
 
-- **💾 Smart Storage & Caching**
+**💾 Smart Storage & Caching**
   - Icon images are cached in the browser's Cache API (to save client bandwidth upon revisit) and **automatically cleaned** when the storage limit (configurable) is exceeded.
   - The entire app (HTML, JS, CSS, SW) is cached by the Service Worker, enabling **offline access** (except new updates sync).
   - Database is stored in IndexedDB for fast subsequent loads.
 
-- **📡 Bandwidth & Server-Cost Friendly**
+**📡 Bandwidth & Server-Cost Friendly**
   - All static assets (icons, database) are served via **jsDelivr CDN**, leveraging global edge caching.
   - The app itself is hosted on Netlify, but because almost everything runs on the client, your Netlify credits are barely consumed.
   - Service Worker updates pull new versions only when `sw.js` changes – no unnecessary network requests.
 
-- **🎨 Beautiful & Responsive UI**
+**🎨 Beautiful & Responsive UI**
   - Glass-morphism design with animated gradients. (can be turned off in settings)
   - Fully responsive – works on phones, tablets, and desktops.
   - Dark theme to reduce eye strain.
 
-- **⌨️ Shortcuts**
+**⌨️ Shortcuts**
   - Swipe left/right or press left/right arrow for page navigation.
   - Alt+S to trigger 'jump to page' (search) box on pagination bar.
 
-- **⭐ Favorites System**
+**⭐ Favorites System**
   - Star any item to add it to your personal favorites list.
   - Import/export favorites as JSON – share your collection.
   - Toggle **Favorites only** view to focus on your curated list.
 
-- **🔍 Advanced Search & Filters**
+**🔍 Advanced Search & Filters**
   - Search by name, ID, description, or icon filename.
   - Filter by type, rarity, and in-game version tag (OBXX).
   - Multi-page layout with pagination bar as overlay for fast navigation.
 
-- **⚙️ Rich Settings**
+**⚙️ Rich Settings**
   - Customize search scope, click action, download naming, icon storage limit, and more.
   - Analyze database statistics, duplicated items, missing filters, and missing icons.
   - One-click update check and version changelog.
 
-- **📱 PWA & Shareable**
+**📱 PWA & Shareable**
   - Installable as a Progressive Web App on mobile devices.
   - Each item has a unique URL (`?item=ID`) – share any item directly.
 
-- **🛠️ Developer Friendly**
+**🛠️ Developer Friendly**
   - Exposed API for fetching item icons (see below).
   - Source code is clean, well-commented, and easy to fork.
   - All configuration is centralized in `script.js` – no need to hunt through the code.
