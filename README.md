@@ -132,7 +132,7 @@ If you create a modified version or derivative work of this project (including f
 - Clearly state the changes you made from the original project.
 - Make the source code accessible to all users of your modified version.
 
-**Note:** The `PNG/` icons and `database.msgpack.gz` are sourced from ShahGCreator and are licensed under the **MIT License**, which is more permissive. This MIT license applies **only** to those asset files, not to the WebApp codebase itself.
+**Note:** The `PNG/` icons and `database.msgpack.gz` are sourced from ShahGCreator and are licensed under the **MIT License**. This MIT license applies **only** to those asset files, not to the WebApp codebase itself.
 
 For full license details, see the [`LICENSE`](./LICENSE) file in the repository root.
 
