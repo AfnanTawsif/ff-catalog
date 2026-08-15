@@ -26,6 +26,7 @@ The app checks for a new database every 24 hours, and you can force a sync anyti
 ## 🚀 WebApp Overview
 
 - **🏎️ Blazing Performance**
+  - 'Reduce visual effects option' for best performance on weak devices.
   - Lazy-loads images & animations only for items on current page.
   - Uses a **Web Worker** to parse the MessagePack database off the main thread – no UI jank.
   - Decompression (`DecompressionStream`) is hardware-accelerated in modern browsers.
