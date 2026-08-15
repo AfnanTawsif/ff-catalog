@@ -1,6 +1,6 @@
 [![GitHub Stars](https://img.shields.io/github/stars/AfnanTawsif/ff-catalog?style=for-the-badge&logo=github)](https://github.com/AfnanTawsif/ff-catalog)
 &nbsp; &nbsp;[![Last Commit](https://img.shields.io/github/last-commit/AfnanTawsif/ff-catalog?style=for-the-badge)](https://github.com/AfnanTawsif/ff-catalog/commits/main) <br>
-[![Netlify](https://img.shields.io/badge/Netlify-v1.0.4-blue?logo=netlify&logoColor=white)](https://ff-catalog.netlify.app/)
+[![Netlify](https://img.shields.io/badge/Netlify-v1.1.0-blue?logo=netlify&logoColor=white)](https://ff-catalog.netlify.app/)
 &nbsp; &nbsp;[![Database](https://img.shields.io/badge/Database-2026--06--24-2e7d32?logo=databricks&logoColor=white)](https://github.com/AfnanTawsif/ff-catalog/blob/main/database.msgpack.gz)
 ## 🎮 Free Fire Catalog
 ![Free Fire Catalog Banner](./WebApp/App/icons/banner.jpg)
@@ -24,7 +24,7 @@ The app checks for a new database every 24 hours, and you can force a sync anyti
 ## 🚀 WebApp Overview
 
 - **🏎️ Blazing Performance**
-  - Lazy-loads images & animations only when they enter the viewport.
+  - Lazy-loads images & animations only for items on current page.
   - Uses a **Web Worker** to parse the MessagePack database off the main thread – no UI jank.
   - Decompression (`DecompressionStream`) is hardware-accelerated in modern browsers.
 
@@ -39,9 +39,13 @@ The app checks for a new database every 24 hours, and you can force a sync anyti
   - Service Worker updates pull new versions only when `sw.js` changes – no unnecessary network requests.
 
 - **🎨 Beautiful & Responsive UI**
-  - Glass-morphism design with animated gradients.
+  - Glass-morphism design with animated gradients. (can be turned off in settings)
   - Fully responsive – works on phones, tablets, and desktops.
-  - Dark theme by default to reduce eye strain.
+  - Dark theme to reduce eye strain.
+
+- - **⌨️ Shortcuts**
+  - Swipe left/right or press left/right arrow for page navigation.
+  - Alt+S to trigger 'jump to page' (search) box on pagination bar.
 
 - **⭐ Favorites System**
   - Star any item to add it to your personal favorites list.
@@ -51,11 +55,11 @@ The app checks for a new database every 24 hours, and you can force a sync anyti
 - **🔍 Advanced Search & Filters**
   - Search by name, ID, description, or icon filename.
   - Filter by type, rarity, and in-game version tag (OBXX).
-  - Choose between multi-page pagination or infinite scroll.
+  - Multi-page layout with pagination bar as overlay for fast navigation.
 
 - **⚙️ Rich Settings**
   - Customize search scope, click action, download naming, icon storage limit, and more.
-  - View database statistics, missing filters, and missing icons.
+  - Analyze database statistics, duplicated items, missing filters, and missing icons.
   - One-click update check and version changelog.
 
 - **📱 PWA & Shareable**
