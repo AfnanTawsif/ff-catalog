@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ff-catalog-app-v1.2.0';
+const CACHE_NAME = 'ff-catalog-app-v1.2.1';
 const ASSETS = [
     './',
     './index.html',
@@ -6,6 +6,8 @@ const ASSETS = [
     './db-worker.js',
     './icons/icon.svg',
     './icons/error.webp',
+    './icons/error-403.webp',       
+    './icons/network-error.webp', 
     './icons/banner.jpg',
     './manifest.json',
     './robots.txt',

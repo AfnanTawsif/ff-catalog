@@ -489,6 +489,47 @@
         .fav-toggle.active #favCount {
             opacity: 1;
         }
+        
+        /* ----- Reload Icon Button (for images) ----- */
+        .reload-icon-btn {
+            position: absolute;
+            bottom: 4px;
+            right: 4px;
+            background: rgba(0, 0, 0, 0.65);
+            border: none;
+            border-radius: 50%;
+            color: #fff;
+            width: 22px;
+            height: 22px;
+            font-size: 14px;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            pointer-events: auto;
+            touch-action: auto;
+            transition: background 0.2s, transform 0.2s;
+            backdrop-filter: blur(2px);
+        }
+        body.reduce-effects .reload-icon-btn {
+            backdrop-filter: none;
+        }
+        .reload-icon-btn.visible {
+            display: flex;
+        }
+        .reload-icon-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+        .reload-icon-btn:active {
+            transform: scale(0.9);
+        }
+        .reload-icon-btn svg {
+            width: 14px;
+            height: 14px;
+            fill: currentColor;
+        }
 
         /* ----- FAVORITES TOOLBAR (shown when active) ----- */
         .fav-toolbar {
@@ -3110,9 +3151,13 @@
                     <option value="Photo Frame">Photo Frames</option> <option value="Avatar Frame">Avatar Frames</option>
                     <option value="Photo Pose">Photo Poses</option> <option value="Sticker">Stickers</option>
                     <option value="Titles">Titles</option> <option value="" disabled="">──────</option>
-                    <option value="Characters">Characters</option> <option value="Pets">Pets</option>
-                    <option value="Pet Skill">Pet Skills</option> <option value="Pet Skin">Pet Skins</option>
-                    <option value="Pet Emote">Pet Emotes</option> <option value="" disabled="">──────</option>
+                    <option value="Characters">Characters</option>
+                    <option value="Pets">Pets</option>
+                    <option value="Pyro pet">Pyro Pets</option>
+                    <option value="Pet Skill">Pet Skills</option>
+                    <option value="Pet Skin">Pet Skins</option>
+                    <option value="Pet Emote">Pet Emotes</option>
+                    <option value="" disabled="">──────</option>
                     <option value="Bundle Create">Bundle Creates</option> <option value="Exchange Tokens">Exchange Tokens</option>
                     <option value="Loot Crates">Loot Crates</option> <option value="Choice Crates">Choice Crates</option>
                     <option value="Vouchers">Vouchers</option>

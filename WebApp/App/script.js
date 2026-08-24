@@ -26,6 +26,8 @@ const CONFIG = {
     CDN_BASE_URL: 'https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/Item-webp/',
     DATABASE_URL: 'https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/database.msgpack.gz',
     FALLBACK_IMAGE_URL: 'icons/error.webp',
+    ERROR_403_IMAGE_URL: 'icons/error-403.webp',
+    NETWORK_ERROR_IMAGE_URL: 'icons/network-error.webp',
     GITHUB_REPO_URL: 'https://github.com/AfnanTawsif/ff-catalog',
     GITHUB_API_TREE_URL: 'https://api.github.com/repos/AfnanTawsif/ff-catalog/git/trees/main?recursive=1',
     WHATS_NEW_URL: 'https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/WebApp/Online/whats_new.json',
@@ -41,6 +43,28 @@ const CONFIG = {
 // ================================================================
 //  END OF CONFIGURATION
 // ================================================================
+
+// --------------------------------------------------------------
+//  HELPER: Return correct fallback URL based on error
+// --------------------------------------------------------------
+function getFallbackUrl(err) {
+    // If err is a number, treat it as a status code
+    const status = (typeof err === 'number') ? err : (err.status || 0);
+
+    if (status === 403) {
+        return CONFIG.ERROR_403_IMAGE_URL;
+    }
+    // Also check message for '403' as a fallback
+    if (err && err.message && err.message.includes('403')) {
+        return CONFIG.ERROR_403_IMAGE_URL;
+    }
+    // Check for network errors: status 0, or message contains 'NetworkError' or 'network'
+    if (status === 0 || (err && err.message && (err.message.includes('NetworkError') || err.message.toLowerCase().includes('network')))) {
+        return CONFIG.NETWORK_ERROR_IMAGE_URL;
+    }
+    // For 404 or any other error, return the generic error image
+    return CONFIG.FALLBACK_IMAGE_URL;
+}
 
 // --------------------------------------------------------------
 //  SETTINGS BUBBLE TUTORIAL FLAG (persistent via localStorage)
@@ -848,20 +872,19 @@ function adjustIconNameOverflow(el) {
 }
 
 // --------------------------------------------------------------
-//  ITEM MODAL POPULATION
+//  ITEM MODAL POPULATION (with reload button and cache-first download)
 // --------------------------------------------------------------
 let currentShareItemId = null;
 
 async function populateItemModal(item) {
     const iconUrl = CONFIG.CDN_BASE_URL + item.itemID + '.webp';
-    const fallbackUrl = CONFIG.FALLBACK_IMAGE_URL;
     const modalImg = document.getElementById('modalImg');
 
     // Determine filename based on downloadAs selection
-    const dlOption = downloadAs.value; // e.g., "icon.webp", "id.png"
+    const dlOption = downloadAs.value;
     const parts = dlOption.split('.');
-    const pattern = parts[0]; // "icon" or "id"
-    const ext = parts[1];     // "webp" or "png"
+    const pattern = parts[0];
+    const ext = parts[1];
     let baseName = pattern === 'icon' ? (item.icon || item.itemID) : item.itemID;
     const dlFileName = `${baseName}.${ext}`;
 
@@ -873,55 +896,120 @@ async function populateItemModal(item) {
         delete modalImg.dataset.objectUrl;
     }
     modalImg.removeAttribute('src');
-    modalImg.classList.remove('loaded');
+    modalImg.classList.remove('loaded', 'is-fallback');
     delete modalImg.dataset.loaded;
     modalImg.dataset.failed = "false";
     modalImg.onload = null;
     modalImg.onerror = null;
-    // ------------------------------
+    modalImg.dataset.originalUrl = iconUrl;
 
-    try {
-        const { blob, fromCache } = await loadImageWithRetry(iconUrl);
-        const objectUrl = URL.createObjectURL(blob);
-        modalImg.dataset.objectUrl = objectUrl;
+    // --- Reload button in modal ---
+    const modalWrapper = document.querySelector('.item-modal-left .img-wrapper');
+    let modalReloadBtn = document.getElementById('modalReloadBtn');
+    if (!modalReloadBtn) {
+        modalReloadBtn = document.createElement('button');
+        modalReloadBtn.id = 'modalReloadBtn';
+        modalReloadBtn.className = 'reload-icon-btn';
+        modalReloadBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>`;
+        modalReloadBtn.title = 'Reload image';
+        modalReloadBtn.style.display = 'none';
+        modalWrapper.appendChild(modalReloadBtn);
+    }
+    modalReloadBtn.classList.remove('visible');
+    modalReloadBtn.style.display = 'none';
 
-        const markLoaded = () => {
-            if (modalImg.dataset.loaded) return;
-            modalImg.dataset.loaded = 'true';
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    modalImg.classList.add('loaded');
-                });
+    // Reload handler
+    modalReloadBtn.onclick = async (e) => {
+        e.stopPropagation();
+        const url = modalImg.dataset.originalUrl;
+        try {
+            const cache = await caches.open('ff-icons');
+            await cache.delete(url);
+        } catch (_) {}
+        modalImg.dataset.loaded = 'false';
+        modalImg.classList.remove('loaded', 'is-fallback');
+        modalReloadBtn.classList.remove('visible');
+        modalReloadBtn.style.display = 'none';
+        // Retry loading
+        loadModalImage(item, modalImg, modalReloadBtn);
+    };
+
+    // Helper to load modal image
+    function loadModalImage(item, imgEl, btn) {
+        const url = imgEl.dataset.originalUrl;
+        loadImageWithRetry(url)
+            .then(({ blob, fromCache }) => {
+                const objectUrl = URL.createObjectURL(blob);
+                imgEl.dataset.objectUrl = objectUrl;
+
+                const markLoaded = () => {
+                    if (imgEl.dataset.loaded === 'true') return;
+                    imgEl.dataset.loaded = 'true';
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            imgEl.classList.add('loaded');
+                            if (!imgEl.classList.contains('is-fallback')) {
+                                btn.classList.remove('visible');
+                                btn.style.display = 'none';
+                            }
+                        });
+                    });
+                };
+
+                imgEl.onload = markLoaded;
+                imgEl.onerror = (err) => {
+                    // Use getFallbackUrl with the error event
+                    const fallbackUrl = getFallbackUrl(err);
+                    imgEl.src = fallbackUrl;
+                    imgEl.classList.add('is-fallback');
+                    btn.classList.add('visible');
+                    btn.style.display = 'flex';
+                    markLoaded();
+                };
+
+                imgEl.src = objectUrl;
+
+                if (imgEl.complete && imgEl.naturalWidth > 0) {
+                    if (imgEl.decode) {
+                        imgEl.decode().then(markLoaded).catch(() => markLoaded());
+                    } else {
+                        markLoaded();
+                    }
+                } else {
+                    if (imgEl.decode) {
+                        imgEl.decode().then(markLoaded).catch(() => {});
+                    }
+                }
+
+                if (!fromCache) recordImageSize(blob.size);
+            })
+            .catch(err => {
+                console.warn(`Failed to load icon for ${item.itemID}:`, err);
+                const fallbackUrl = getFallbackUrl(err);
+                imgEl.src = fallbackUrl;
+                imgEl.classList.add('is-fallback');
+                btn.classList.add('visible');
+                btn.style.display = 'flex';
+
+                const markLoaded = () => {
+                    if (imgEl.dataset.loaded === 'true') return;
+                    imgEl.dataset.loaded = 'true';
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            imgEl.classList.add('loaded');
+                        });
+                    });
+                };
+                imgEl.onload = markLoaded;
+                imgEl.onerror = markLoaded;
+                setTimeout(markLoaded, 3000);
             });
-        };
-
-        modalImg.onload = markLoaded;
-        modalImg.onerror = () => {
-            modalImg.src = fallbackUrl;
-            markLoaded();
-        };
-
-        modalImg.src = objectUrl;
-
-        if (modalImg.complete && modalImg.naturalWidth > 0) {
-            if (modalImg.decode) {
-                modalImg.decode().then(markLoaded).catch(() => markLoaded());
-            } else {
-                markLoaded();
-            }
-        } else {
-            if (modalImg.decode) {
-                modalImg.decode().then(markLoaded).catch(() => {});
-            }
-        }
-
-        if (!fromCache) recordImageSize(blob.size);
-    } catch (err) {
-        console.warn(`Failed to load icon for ${item.itemID}:`, err);
-        modalImg.src = fallbackUrl;
-        modalImg.classList.add('loaded');
     }
 
+    // Start loading modal image
+    loadModalImage(item, modalImg, modalReloadBtn);
+
+    // Fill other modal data
     document.getElementById('modalName').textContent = item.name || 'Unnamed';
 
     const iconNameEl = document.getElementById('modalIconName');
@@ -948,8 +1036,8 @@ async function populateItemModal(item) {
     document.getElementById('modalBadges').innerHTML = badgesHTML;
     document.getElementById('modalDesc').textContent = item.description || 'No description available.';
 
+    // Download button – uses the actual displayed image (modalImg.src)
     const dlBtn = document.getElementById('modalDlBtn');
-    // When download is triggered, we need to use the current downloadAs value
     dlBtn.onclick = () => {
         const currentDlOption = downloadAs.value;
         const parts = currentDlOption.split('.');
@@ -958,16 +1046,20 @@ async function populateItemModal(item) {
         let baseName = pattern === 'icon' ? (item.icon || item.itemID) : item.itemID;
         const filename = `${baseName}.${ext}`;
         const isPng = ext === 'png';
-        // Download the image: we need to fetch the blob and optionally convert
-        fetchImageAsBlob(iconUrl).then(blob => {
-            if (isPng) {
-                return convertBlobToPng(blob);
-            } else {
-                return blob;
-            }
-        }).then(finalBlob => {
-            executeBlobDownload(finalBlob, filename);
-        }).catch(() => alert('Failed to download image.'));
+        // Use the actual displayed src
+        const displayedSrc = modalImg.src;
+        fetchImageAsBlob(displayedSrc)
+            .then(blob => {
+                if (isPng) {
+                    return convertBlobToPng(blob);
+                } else {
+                    return blob;
+                }
+            })
+            .then(finalBlob => {
+                executeBlobDownload(finalBlob, filename);
+            })
+            .catch(() => alert('Failed to download image.'));
     };
 
     const modalStar = document.getElementById('modalStarBtn');
@@ -994,15 +1086,26 @@ function openItemModalWithData(item) {
 }
 
 // --------------------------------------------------------------
-//  HELPER: Fetch image as blob (raw, no conversion)
+//  HELPER: Fetch image as blob (cache-first, then fallback)
 // --------------------------------------------------------------
 async function fetchImageAsBlob(imgUrl) {
-    const fallbackUrl = CONFIG.FALLBACK_IMAGE_URL;
-    let response = await fetch(imgUrl);
-    if (!response.ok) {
-        response = await fetch(fallbackUrl);
+    try {
+        const { blob } = await loadImageWithRetry(imgUrl);
+        return blob;
+    } catch (err) {
+        console.warn('fetchImageAsBlob: failed for', imgUrl, err);
+        // Try fallback image (error.webp) with same cache-first logic
+        const fallbackUrl = CONFIG.FALLBACK_IMAGE_URL;
+        try {
+            const { blob } = await loadImageWithRetry(fallbackUrl);
+            return blob;
+        } catch {
+            // Ultimate fallback: direct fetch (might still fail)
+            const response = await fetch(fallbackUrl);
+            if (!response.ok) throw new Error('Failed to load fallback');
+            return await response.blob();
+        }
     }
-    return await response.blob();
 }
 
 // --------------------------------------------------------------
@@ -1062,9 +1165,7 @@ function executeBlobDownload(blob, filename) {
 
 async function copyImageToClipboard(imgUrl, customBtn, cardItemID) {
     try {
-        // Fetch the raw blob (webp or fallback)
         let blob = await fetchImageAsBlob(imgUrl);
-        // Convert to PNG for clipboard compatibility
         blob = await convertBlobToPng(blob);
         const item = new ClipboardItem({ "image/png": blob });
         await navigator.clipboard.write([item]);
@@ -1133,10 +1234,11 @@ modalShareBtn.addEventListener('click', function() {
 });
 
 // --------------------------------------------------------------
-//  ITEM CLICK HANDLER
+//  ITEM CLICK HANDLER – now accepts an optional imgSrc
 // --------------------------------------------------------------
-function handleItemClick(item) {
-    const iconUrl = CONFIG.CDN_BASE_URL + item.itemID + '.webp';
+function handleItemClick(item, imgSrc) {
+    // If imgSrc not provided, construct from item ID (fallback)
+    const iconUrl = imgSrc || CONFIG.CDN_BASE_URL + item.itemID + '.webp';
     // Determine filename based on downloadAs selection
     const dlOption = downloadAs.value;
     const parts = dlOption.split('.');
@@ -1150,10 +1252,13 @@ function handleItemClick(item) {
     if (clickAction.value === 'details') {
         openItemModalWithData(item);
     } else if (clickAction.value === 'download') {
+        // Use the actual displayed image src
         triggerDownload(iconUrl, dlFileName);
     } else if (clickAction.value === 'copyIcon') {
+        // Copy the displayed image
         copyImageToClipboard(iconUrl, null, item.itemID);
     } else {
+        // copy ID
         navigator.clipboard.writeText(String(item.itemID)).then(() => {
             const tick = document.getElementById(`tick-${item.itemID}`);
             if (tick) {
@@ -1390,7 +1495,7 @@ document.getElementById('summarizeBtn').addEventListener('click', () => {
     const extraKeys = new Set();
     allItems.forEach(item => {
         Object.keys(item).forEach(k => {
-            if (!['icon', 'itemID', 'name', 'description', 'rarity'].includes(k)) {
+            if (!['icon', 'itemID', 'name', 'description'].includes(k)) {
                 extraKeys.add(k);
             }
         });
@@ -1399,7 +1504,7 @@ document.getElementById('summarizeBtn').addEventListener('click', () => {
     if (extraKeys.size === 0) {
         reportHTML += `<p>No extra tags found.</p>`;
     } else {
-        reportHTML += `<p>These tags were found except the primary (name, itemID, icon, description, rarity) tags:</p><ul>`;
+        reportHTML += `<p>These tags were found except the primary (name, itemID, icon, description) tags:</p><ul>`;
         extraKeys.forEach(tag => {
             reportHTML += `<li class="copyable-box">${tag}</li>`;
         });
@@ -1452,7 +1557,7 @@ function saveMissingIconsCache(data) {
     try {
         const cacheData = {
             timestamp: Date.now(),
-            data: data // data is { missingIconIds, blackWhiteMissing, otherMissing }
+            data: data
         };
         localStorage.setItem(MISSING_ICONS_CACHE_KEY, JSON.stringify(cacheData));
     } catch (e) {
@@ -1657,7 +1762,7 @@ document.getElementById('findFiltersBtn').addEventListener('click', async () => 
 });
 
 // --------------------------------------------------------------
-//  DYNAMIC TAG FILTER POPULATION (silent)
+//  DYNAMIC TAG FILTER POPULATION  –  exclude OB90, OB91, OB92, ... (>= 90)
 // --------------------------------------------------------------
 function populateTagFilter(items) {
     const tags = new Set();
@@ -1670,10 +1775,16 @@ function populateTagFilter(items) {
 
     const obTags = [];
     const nonObTags = [];
+
     tags.forEach(tag => {
-        if (tag.startsWith('OB') && tag !== 'OB90') {
+        if (tag.startsWith('OB')) {
+            const numPart = tag.replace('OB', '');
+            const num = parseInt(numPart, 10);
+            if (!isNaN(num) && num >= 90) {
+                return;
+            }
             obTags.push(tag);
-        } else if (tag !== 'OB90') {
+        } else {
             nonObTags.push(tag);
         }
     });
@@ -1700,7 +1811,6 @@ function populateTagFilter(items) {
         select.appendChild(opt);
     });
 
-    // Restore selection if still valid
     if (currentValue && sortedTags.includes(currentValue)) {
         select.value = currentValue;
     } else {
@@ -2007,11 +2117,12 @@ async function saveLocalCache(rawData) {
 }
 
 // --------------------------------------------------------------
-//  ROBUST IMAGE LOADER – now returns { blob, fromCache }
+//  ROBUST IMAGE LOADER – with total timeout (5s)
 // --------------------------------------------------------------
 async function loadImageWithRetry(url) {
     const CACHE_TIMEOUT = 2000;
     const RETRY_DELAY = 500;
+    const TOTAL_TIMEOUT = 10000;
 
     async function attemptCache() {
         try {
@@ -2037,23 +2148,37 @@ async function loadImageWithRetry(url) {
         const cache = await caches.open('ff-icons');
         await cache.delete(url);
         const response = await fetch(url);
-        if (!response.ok) throw new Error(`Network fetch failed: ${response.status}`);
+        if (!response.ok) {
+            const err = new Error(`Network fetch failed: ${response.status}`);
+            err.status = response.status;
+            throw err;
+        }
         cache.put(url, response.clone());
         const blob = await response.blob();
         if (!blob || blob.size === 0) throw new Error('Empty blob from network');
         return blob;
     }
 
+    const overallTimeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('loadImageWithRetry timeout')), TOTAL_TIMEOUT)
+    );
+
     try {
-        let blob = await withTimeout(attemptCache(), CACHE_TIMEOUT);
-        if (blob) return { blob, fromCache: true };
+        const result = await Promise.race([
+            (async () => {
+                let blob = await withTimeout(attemptCache(), CACHE_TIMEOUT);
+                if (blob) return { blob, fromCache: true };
 
-        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-        blob = await withTimeout(attemptCache(), CACHE_TIMEOUT);
-        if (blob) return { blob, fromCache: true };
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+                blob = await withTimeout(attemptCache(), CACHE_TIMEOUT);
+                if (blob) return { blob, fromCache: true };
 
-        blob = await loadFromNetworkAndCache();
-        return { blob, fromCache: false };
+                blob = await loadFromNetworkAndCache();
+                return { blob, fromCache: false };
+            })(),
+            overallTimeout
+        ]);
+        return result;
     } catch (err) {
         throw err;
     }
@@ -2173,7 +2298,6 @@ function parseAndSetDatabase(uint8Array) {
         dbUpdatedOnText = formatDatabaseDate(rawDbUpdatedOnText);
         document.getElementById('dbVersionUI').textContent = rawDbUpdatedOnText;
 
-        // Populate tag filter dynamically from the loaded items
         populateTagFilter(allItems);
 
         applyFilters();
@@ -2255,7 +2379,11 @@ async function initDatabase(forceSync = false) {
             loadingText.textContent = 'Getting latest database...';
             const dbUrl = CONFIG.DATABASE_URL + '?nocache=' + Date.now();
             const response = await fetch(dbUrl, { cache: 'no-store' });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            if (!response.ok) {
+                const err = new Error(`HTTP ${response.status}`);
+                err.status = response.status;
+                throw err;
+            }
 
             loadingText.textContent = 'Extracting data...';
             const ds = new DecompressionStream('gzip');
@@ -2391,7 +2519,6 @@ function applyFilters() {
     totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
     if (totalPages === 0) totalPages = 1;
 
-    // ✅ Reset to page 1 on filter/search change
     currentPage = 1;
 
     totalPagesUI.textContent = totalPages;
@@ -2473,7 +2600,6 @@ function renderPage(direction) {
     paginationContainer.style.display = 'flex';
     updatePaginationUI();
 
-    // Scroll the pagination bar so that the active page button is visible
     scrollPaginationToActive();
 
     initAnimationObserver();
@@ -2503,7 +2629,7 @@ function scrollPaginationToActive() {
 }
 
 // --------------------------------------------------------------
-//  BUILD ITEM CARDS – with robust image loading using double RAF
+//  BUILD ITEM CARDS – with reload button and robust loading
 // --------------------------------------------------------------
 function buildItemCards(items) {
     const frag = document.createDocumentFragment();
@@ -2521,58 +2647,115 @@ function buildItemCards(items) {
         img.draggable = false;
         img.setAttribute('ondragstart', 'return false');
         img.setAttribute('oncontextmenu', 'return false');
+        img.dataset.originalUrl = iconUrl;
 
-        loadImageWithRetry(iconUrl)
-        .then(({ blob, fromCache }) => {
-            const objectUrl = URL.createObjectURL(blob);
-            img.dataset.objectUrl = objectUrl;
+        // Reload button
+        const reloadBtn = document.createElement('button');
+        reloadBtn.className = 'reload-icon-btn';
+        reloadBtn.dataset.itemId = String(item.itemID);
+        reloadBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>`;
+        reloadBtn.title = 'Reload image';
+        reloadBtn.style.display = 'none';
 
-            const markLoaded = () => {
-                if (img.dataset.loaded) return;
-                img.dataset.loaded = 'true';
-                requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        img.classList.add('loaded');
-                    });
-                });
-            };
-
-            img.onload = markLoaded;
-            img.onerror = () => {
-                img.src = CONFIG.FALLBACK_IMAGE_URL;
-                markLoaded();
-            };
-
-            img.src = objectUrl;
-
-            if (img.complete && img.naturalWidth > 0) {
-                if (img.decode) {
-                    img.decode().then(markLoaded).catch(() => markLoaded());
-                } else {
-                    markLoaded();
-                }
-            } else {
-                if (img.decode) {
-                    img.decode().then(markLoaded).catch(() => {});
-                }
-            }
-
-            if (!fromCache) {
-                recordImageSize(blob.size);
-                if (currentIconStorageSize + pendingSizeAdd > (iconStorageLimitMB * 1024 * 1024)) {
-                    flushStorageUpdate();
-                    checkAndCleanStorage();
-                }
-            }
-        })
-        .catch(err => {
-            console.warn('Failed to load image:', iconUrl, err);
-            img.src = CONFIG.FALLBACK_IMAGE_URL;
-            img.classList.add('loaded');
+        reloadBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const url = img.dataset.originalUrl;
+            try {
+                const cache = await caches.open('ff-icons');
+                await cache.delete(url);
+            } catch (_) {}
+            img.dataset.loaded = 'false';
+            img.classList.remove('loaded', 'is-fallback');
+            reloadBtn.classList.remove('visible');
+            reloadBtn.style.display = 'none';
+            loadCardImage(img, item, reloadBtn);
         });
 
         imgContainer.appendChild(img);
+        imgContainer.appendChild(reloadBtn);
 
+        // Helper to load image
+        function loadCardImage(imgEl, item, btn) {
+            const url = imgEl.dataset.originalUrl;
+            loadImageWithRetry(url)
+                .then(({ blob, fromCache }) => {
+                    const objectUrl = URL.createObjectURL(blob);
+                    imgEl.dataset.objectUrl = objectUrl;
+
+                    const markLoaded = () => {
+                        if (imgEl.dataset.loaded === 'true') return;
+                        imgEl.dataset.loaded = 'true';
+                        requestAnimationFrame(() => {
+                            requestAnimationFrame(() => {
+                                imgEl.classList.add('loaded');
+                                if (!imgEl.classList.contains('is-fallback')) {
+                                    btn.classList.remove('visible');
+                                    btn.style.display = 'none';
+                                }
+                            });
+                        });
+                    };
+
+                    imgEl.onload = markLoaded;
+                    imgEl.onerror = (ev) => {
+                        // Use getFallbackUrl with the error event
+                        const fallbackUrl = getFallbackUrl(ev);
+                        imgEl.src = fallbackUrl;
+                        imgEl.classList.add('is-fallback');
+                        btn.classList.add('visible');
+                        btn.style.display = 'flex';
+                        markLoaded();
+                    };
+
+                    imgEl.src = objectUrl;
+
+                    if (imgEl.complete && imgEl.naturalWidth > 0) {
+                        if (imgEl.decode) {
+                            imgEl.decode().then(markLoaded).catch(() => markLoaded());
+                        } else {
+                            markLoaded();
+                        }
+                    } else {
+                        if (imgEl.decode) {
+                            imgEl.decode().then(markLoaded).catch(() => {});
+                        }
+                    }
+
+                    if (!fromCache) {
+                        recordImageSize(blob.size);
+                        if (currentIconStorageSize + pendingSizeAdd > (iconStorageLimitMB * 1024 * 1024)) {
+                            flushStorageUpdate();
+                            checkAndCleanStorage();
+                        }
+                    }
+                })
+                .catch(err => {
+                    console.warn('Failed to load image:', url, err);
+                    const fallbackUrl = getFallbackUrl(err);
+                    imgEl.src = fallbackUrl;
+                    imgEl.classList.add('is-fallback');
+                    btn.classList.add('visible');
+                    btn.style.display = 'flex';
+
+                    const markLoaded = () => {
+                        if (imgEl.dataset.loaded === 'true') return;
+                        imgEl.dataset.loaded = 'true';
+                        requestAnimationFrame(() => {
+                            requestAnimationFrame(() => {
+                                imgEl.classList.add('loaded');
+                            });
+                        });
+                    };
+                    imgEl.onload = markLoaded;
+                    imgEl.onerror = markLoaded;
+                    setTimeout(markLoaded, 3000);
+                });
+        }
+
+        // Start loading
+        loadCardImage(img, item, reloadBtn);
+
+        // Star button
         const starBtn = document.createElement('button');
         starBtn.className = 'star-btn';
         starBtn.dataset.id = String(item.itemID);
@@ -2610,7 +2793,12 @@ function buildItemCards(items) {
         card.appendChild(h3);
         card.appendChild(small);
 
-        card.addEventListener('click', () => handleItemClick(item));
+        // Click handler passes current img src
+        card.addEventListener('click', (e) => {
+            const imgSrc = img.src;
+            handleItemClick(item, imgSrc);
+        });
+
         frag.appendChild(card);
     });
     return frag;
@@ -2678,7 +2866,6 @@ function goToPage(pageNum) {
     }, 400);
 
     updatePaginationUI();
-    // Scroll the pagination to the newly selected page
     scrollPaginationToActive();
     window.scrollTo({ top: 0, behavior: 'smooth' });
     const activeBtn = pageNumbersEl.children[pageNum - 1];
@@ -2893,7 +3080,6 @@ document.addEventListener('keydown', (e) => {
 //  IMAGE PROTECTION – global context menu / drag prevention
 // --------------------------------------------------------------
 document.addEventListener('contextmenu', function(e) {
-    // Block all context menus on the entire page
     e.preventDefault();
     return false;
 }, { passive: false });
