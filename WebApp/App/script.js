@@ -24,14 +24,24 @@
 const CONFIG = {
     WEBSITE_URL: '',
     CDN_BASE_URL: 'https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/Item-webp/',
+    FALLBACK_CDN_BASE_URL: 'https://cdn.statically.io/gh/AfnanTawsif/ff-catalog@main/Item-webp/',
+    
     DATABASE_URL: 'https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/database.msgpack.gz',
+    FALLBACK_DATABASE_URL: 'https://cdn.statically.io/gh/AfnanTawsif/ff-catalog@main/database.msgpack.gz',
+    
+    WHATS_NEW_URL: 'https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/WebApp/Online/whats_new.json',
+    FALLBACK_WHATS_NEW_URL: 'https://cdn.statically.io/gh/AfnanTawsif/ff-catalog@main/WebApp/Online/whats_new.json',
+    
+    AUTHOR_IMAGE_URL: 'https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/WebApp/Online/author.jpg',
+    FALLBACK_AUTHOR_IMAGE_URL: 'https://cdn.statically.io/gh/AfnanTawsif/ff-catalog@main/WebApp/Online/author.jpg',
+    
     FALLBACK_IMAGE_URL: 'icons/error.webp',
     ERROR_403_IMAGE_URL: 'icons/error-403.webp',
     NETWORK_ERROR_IMAGE_URL: 'icons/network-error.webp',
+    
     GITHUB_REPO_URL: 'https://github.com/AfnanTawsif/ff-catalog',
     GITHUB_API_TREE_URL: 'https://api.github.com/repos/AfnanTawsif/ff-catalog/git/trees/main?recursive=1',
-    WHATS_NEW_URL: 'https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/WebApp/Online/whats_new.json',
-    AUTHOR_IMAGE_URL: 'https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/WebApp/Online/author.jpg',
+    
     CONTACT: {
         facebook: 'https://www.facebook.com/not.tawsif',
         instagram: 'https://www.instagram.com/_hey_tawsif_',
@@ -48,22 +58,58 @@ const CONFIG = {
 //  HELPER: Return correct fallback URL based on error
 // --------------------------------------------------------------
 function getFallbackUrl(err) {
-    // If err is a number, treat it as a status code
     const status = (typeof err === 'number') ? err : (err.status || 0);
-
     if (status === 403) {
         return CONFIG.ERROR_403_IMAGE_URL;
     }
-    // Also check message for '403' as a fallback
     if (err && err.message && err.message.includes('403')) {
         return CONFIG.ERROR_403_IMAGE_URL;
     }
-    // Check for network errors: status 0, or message contains 'NetworkError' or 'network'
     if (status === 0 || (err && err.message && (err.message.includes('NetworkError') || err.message.toLowerCase().includes('network')))) {
         return CONFIG.NETWORK_ERROR_IMAGE_URL;
     }
-    // For 404 or any other error, return the generic error image
     return CONFIG.FALLBACK_IMAGE_URL;
+}
+
+// --------------------------------------------------------------
+//  HELPER: Fetch with automatic fallback on 403
+// --------------------------------------------------------------
+async function fetchWithFallback(primaryUrl, fallbackUrl, options = {}) {
+    const { timeout = 8000, retryOn403 = true } = options;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    try {
+        const response = await fetch(primaryUrl, { signal: controller.signal, ...options });
+        clearTimeout(timeoutId);
+        if (!response.ok) {
+            if (response.status === 403 && retryOn403 && fallbackUrl) {
+                // Try fallback
+                const fallbackController = new AbortController();
+                const fallbackTimeout = setTimeout(() => fallbackController.abort(), timeout);
+                const fallbackResponse = await fetch(fallbackUrl, { signal: fallbackController.signal, ...options });
+                clearTimeout(fallbackTimeout);
+                if (!fallbackResponse.ok) {
+                    const err = new Error(`Fallback failed with ${fallbackResponse.status}`);
+                    err.status = fallbackResponse.status;
+                    throw err;
+                }
+                return fallbackResponse;
+            } else {
+                const err = new Error(`HTTP ${response.status}`);
+                err.status = response.status;
+                throw err;
+            }
+        }
+        return response;
+    } catch (err) {
+        clearTimeout(timeoutId);
+        if (err.name === 'AbortError') {
+            const abortErr = new Error('Request timed out');
+            abortErr.status = 0;
+            throw abortErr;
+        }
+        throw err;
+    }
 }
 
 // --------------------------------------------------------------
@@ -226,6 +272,11 @@ let activeModalStack = [];
 let currentItemModalId = null;
 
 let toastTimeout = null;
+
+// What's New pagination state
+let whatsNewFullData = null;
+let whatsNewCurrentPage = 1;
+const WHATS_NEW_PER_PAGE = 5;
 
 const rarityMap = {
     'NONE': 'None',
@@ -453,7 +504,7 @@ function showCreditToastIfNeeded() {
 }
 
 // --------------------------------------------------------------
-//  WHAT'S NEW? DIALOG (supports tutorial mode for first visit)
+//  WHAT'S NEW? DIALOG – Pagination based with footer bar
 // --------------------------------------------------------------
 async function showWhatsNew(tutorial = false) {
     const reportTitle = document.getElementById('reportTitle');
@@ -480,10 +531,9 @@ async function showWhatsNew(tutorial = false) {
         activeModalStack.push('reportModal');
     }
 
-    const baseUrl = CONFIG.WHATS_NEW_URL;
-    const cacheKey = baseUrl;
-    const fetchUrl = baseUrl + '?nocache=' + Date.now();
+    await versionPromise;
 
+    const cacheKey = CONFIG.WHATS_NEW_URL;
     let cache = null;
     let cachedData = null;
 
@@ -499,11 +549,11 @@ async function showWhatsNew(tutorial = false) {
     let fetchFailed = false;
 
     try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-        const response = await fetch(fetchUrl, { signal: controller.signal, cache: 'no-store' });
-        clearTimeout(timeoutId);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const response = await fetchWithFallback(
+            CONFIG.WHATS_NEW_URL + '?nocache=' + Date.now(),
+            CONFIG.FALLBACK_WHATS_NEW_URL + '?nocache=' + Date.now(),
+            { timeout: 10000 }
+        );
         freshData = await response.json();
         if (cache) {
             try {
@@ -517,27 +567,55 @@ async function showWhatsNew(tutorial = false) {
         console.warn('Failed to fetch fresh changelogs:', err);
     }
 
+    let data = null;
     if (freshData && Array.isArray(freshData) && freshData.length > 0) {
-        renderWhatsNewData(freshData, reportContent);
+        data = freshData;
     } else if (cachedData && Array.isArray(cachedData) && cachedData.length > 0) {
-        renderWhatsNewData(cachedData, reportContent);
+        data = cachedData;
         if (fetchFailed) {
             showToast("Failed to refresh. Showing cached data");
         }
     } else {
         reportContent.innerHTML = `<p class="whatsnew-error">Failed to load from online and cache</p>`;
-    }
-}
-
-function renderWhatsNewData(data, container) {
-    if (!Array.isArray(data) || data.length === 0) {
-        container.innerHTML = `<p class="whatsnew-error">No version history found.</p>`;
         return;
     }
+
+    whatsNewFullData = data;
+    whatsNewCurrentPage = 1;
+    renderWhatsNewPage(reportContent);
+    renderPaginationBar();
+}
+
+function renderWhatsNewPage(container) {
+    if (!whatsNewFullData || !Array.isArray(whatsNewFullData)) return;
+
+    const totalPages = Math.ceil(whatsNewFullData.length / WHATS_NEW_PER_PAGE);
+    if (whatsNewCurrentPage < 1) whatsNewCurrentPage = 1;
+    if (whatsNewCurrentPage > totalPages) whatsNewCurrentPage = totalPages;
+
+    const start = (whatsNewCurrentPage - 1) * WHATS_NEW_PER_PAGE;
+    const end = Math.min(start + WHATS_NEW_PER_PAGE, whatsNewFullData.length);
+    const pageItems = whatsNewFullData.slice(start, end);
+
+    const currentVersion = WEBAPP_VERSION || 'Unknown';
+    const latestVersion = whatsNewFullData[0]?.version || '';
+
     let html = '';
-    data.forEach(item => {
-        html += `<div class="whatsnew-version">`;
-        html += `<h3>${item.version}</h3>`;
+    pageItems.forEach((item) => {
+        const isLatest = (item.version === latestVersion);
+        const isCurrent = (item.version === currentVersion && currentVersion !== 'Unknown');
+
+        html += `<div class="whatsnew-version-card">`;
+        html += `<div class="whatsnew-version-header">`;
+        html += `<span class="version-pill">${item.version}</span>`;
+        if (isLatest) {
+            html += `<span class="latest-pill">Latest</span>`;
+        }
+        if (isCurrent) {
+            html += `<span class="your-version-pill">Yours</span>`;
+        }
+        html += `</div>`;
+
         let logs = item.logs;
         if (typeof logs === 'string') {
             logs = logs.split(/\n/).filter(line => line.trim().length > 0);
@@ -549,11 +627,61 @@ function renderWhatsNewData(data, container) {
             });
             html += `</ul>`;
         } else {
-            html += `<p>No logs available.</p>`;
+            html += `<p style="color: var(--text-muted); font-size: 13px;">No logs available.</p>`;
         }
         html += `</div>`;
     });
     container.innerHTML = html;
+    // Reset scroll to top of the report body
+    const reportBody = container.closest('.report-body');
+    if (reportBody) reportBody.scrollTop = 0;
+}
+
+
+function renderPaginationBar() {
+    const footer = document.getElementById('reportFooter');
+    if (!footer) return;
+    const totalPages = Math.ceil(whatsNewFullData.length / WHATS_NEW_PER_PAGE);
+    if (totalPages <= 1) {
+        footer.innerHTML = '';
+        return;
+    }
+    const current = whatsNewCurrentPage;
+
+    footer.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 2px 0;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <button class="whatsnew-arrow-btn" data-action="prev" title="Previous page" style="background: #2a2a2a; border: none; color: #aaa; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 22px; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; opacity: ${current <= 1 ? '0.3' : '1'}; padding: 0; line-height: 1;">
+                    ‹
+                </button>
+                <span style="color: var(--text-muted); font-size: 14px; font-weight: 500; min-width: 60px; text-align: center;">
+                    ${current} of ${totalPages}
+                </span>
+                <button class="whatsnew-arrow-btn" data-action="next" title="Next page" style="background: #2a2a2a; border: none; color: #aaa; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 22px; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; opacity: ${current >= totalPages ? '0.3' : '1'}; padding: 0; line-height: 1;">
+                    ›
+                </button>
+            </div>
+            <button class="whatsnew-close-btn" style="background: var(--glow); border: none; color: #fff; padding: 6px 18px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(168, 66, 255, 0.4);">
+                CLOSE
+            </button>
+        </div>
+    `;
+
+    const prevBtn = footer.querySelector('[data-action="prev"]');
+    const nextBtn = footer.querySelector('[data-action="next"]');
+    const closeBtn = footer.querySelector('.whatsnew-close-btn');
+
+    const goToPage = (page) => {
+        if (page < 1 || page > totalPages) return;
+        whatsNewCurrentPage = page;
+        const container = document.getElementById('reportContent');
+        renderWhatsNewPage(container);
+        renderPaginationBar();
+    };
+
+    if (prevBtn) prevBtn.addEventListener('click', () => goToPage(current - 1));
+    if (nextBtn) nextBtn.addEventListener('click', () => goToPage(current + 1));
+    if (closeBtn) closeBtn.addEventListener('click', () => closeModal('reportModal'));
 }
 
 // --------------------------------------------------------------
@@ -596,9 +724,9 @@ function getFallbackAuthorSVG() {
 async function loadAuthorImageWithCache() {
     const img = authorImg;
     const loader = authorLoader;
-    const baseUrl = CONFIG.AUTHOR_IMAGE_URL;
-    const cacheKey = baseUrl;
-    const fetchUrl = baseUrl + '?nocache=' + Date.now();
+    const cacheKey = CONFIG.AUTHOR_IMAGE_URL;
+    const fetchUrlPrimary = CONFIG.AUTHOR_IMAGE_URL + '?nocache=' + Date.now();
+    const fetchUrlFallback = CONFIG.FALLBACK_AUTHOR_IMAGE_URL + '?nocache=' + Date.now();
 
     loader.classList.remove('hidden');
 
@@ -631,12 +759,7 @@ async function loadAuthorImageWithCache() {
     if (shouldRefresh) {
         try {
             loader.classList.remove('hidden');
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000);
-            const response = await fetch(fetchUrl, { signal: controller.signal, cache: 'no-store' });
-            clearTimeout(timeoutId);
-            if (!response.ok) throw new Error('Network error');
-
+            const response = await fetchWithFallback(fetchUrlPrimary, fetchUrlFallback, { timeout: 10000 });
             const blob = await response.blob();
             const objectUrl = URL.createObjectURL(blob);
             img.src = objectUrl;
@@ -788,6 +911,12 @@ function closeModal(id, isPopState = false) {
 function forceHideModal(id) {
     const modal = document.getElementById(id);
     if (modal && !modal.classList.contains('hidden')) {
+        if (id === 'reportModal') {
+            whatsNewFullData = null;
+            whatsNewCurrentPage = 1;
+            const footer = document.getElementById('reportFooter');
+            if (footer) footer.innerHTML = '';
+        }
         modal.classList.add('hidden');
         const index = activeModalStack.indexOf(id);
         if (index > -1) {
@@ -880,7 +1009,6 @@ async function populateItemModal(item) {
     const iconUrl = CONFIG.CDN_BASE_URL + item.itemID + '.webp';
     const modalImg = document.getElementById('modalImg');
 
-    // Determine filename based on downloadAs selection
     const dlOption = downloadAs.value;
     const parts = dlOption.split('.');
     const pattern = parts[0];
@@ -890,7 +1018,6 @@ async function populateItemModal(item) {
 
     currentShareItemId = item.itemID;
 
-    // --- Clean up previous state ---
     if (modalImg.dataset.objectUrl) {
         URL.revokeObjectURL(modalImg.dataset.objectUrl);
         delete modalImg.dataset.objectUrl;
@@ -903,7 +1030,6 @@ async function populateItemModal(item) {
     modalImg.onerror = null;
     modalImg.dataset.originalUrl = iconUrl;
 
-    // --- Reload button in modal ---
     const modalWrapper = document.querySelector('.item-modal-left .img-wrapper');
     let modalReloadBtn = document.getElementById('modalReloadBtn');
     if (!modalReloadBtn) {
@@ -918,7 +1044,6 @@ async function populateItemModal(item) {
     modalReloadBtn.classList.remove('visible');
     modalReloadBtn.style.display = 'none';
 
-    // Reload handler
     modalReloadBtn.onclick = async (e) => {
         e.stopPropagation();
         const url = modalImg.dataset.originalUrl;
@@ -930,11 +1055,9 @@ async function populateItemModal(item) {
         modalImg.classList.remove('loaded', 'is-fallback');
         modalReloadBtn.classList.remove('visible');
         modalReloadBtn.style.display = 'none';
-        // Retry loading
         loadModalImage(item, modalImg, modalReloadBtn);
     };
 
-    // Helper to load modal image
     function loadModalImage(item, imgEl, btn) {
         const url = imgEl.dataset.originalUrl;
         loadImageWithRetry(url)
@@ -958,7 +1081,6 @@ async function populateItemModal(item) {
 
                 imgEl.onload = markLoaded;
                 imgEl.onerror = (err) => {
-                    // Use getFallbackUrl with the error event
                     const fallbackUrl = getFallbackUrl(err);
                     imgEl.src = fallbackUrl;
                     imgEl.classList.add('is-fallback');
@@ -1006,37 +1128,35 @@ async function populateItemModal(item) {
             });
     }
 
-    // Start loading modal image
     loadModalImage(item, modalImg, modalReloadBtn);
 
-    // Fill other modal data
     document.getElementById('modalName').textContent = item.name || 'Unnamed';
 
     const iconNameEl = document.getElementById('modalIconName');
     iconNameEl.textContent = item.icon || 'Undefined';
     adjustIconNameOverflow(iconNameEl);
 
-    let badgesHTML = `<span class="badge badge-id">ID: ${item.itemID}</span>`;
+    // ----- BADGES WITH COPYABLE CLASS -----
+    let badgesHTML = `<span class="badge badge-id copyable-box">ID: ${item.itemID}</span>`;
     if (item.type) {
         let displayType = item.type;
         if (displayType.toLowerCase().endsWith('s')) displayType = displayType.slice(0, -1);
-        badgesHTML += `<span class="badge badge-type">${displayType}</span>`;
+        badgesHTML += `<span class="badge badge-type copyable-box">${displayType}</span>`;
     }
     if (item.rarity) {
         const mappedName = rarityMap[item.rarity] || item.rarity;
-        badgesHTML += `<span class="badge rare-${item.rarity}">${mappedName}</span>`;
+        badgesHTML += `<span class="badge rare-${item.rarity} copyable-box">${mappedName}</span>`;
     }
     if (item.tag) {
         const tags = item.tag.split(',').map(t => t.trim());
         tags.forEach(t => {
-            if (t) badgesHTML += `<span class="badge badge-tag">${t}</span>`;
+            if (t) badgesHTML += `<span class="badge badge-tag copyable-box">${t}</span>`;
         });
     }
 
     document.getElementById('modalBadges').innerHTML = badgesHTML;
     document.getElementById('modalDesc').textContent = item.description || 'No description available.';
 
-    // Download button – uses the actual displayed image (modalImg.src)
     const dlBtn = document.getElementById('modalDlBtn');
     dlBtn.onclick = () => {
         const currentDlOption = downloadAs.value;
@@ -1046,7 +1166,6 @@ async function populateItemModal(item) {
         let baseName = pattern === 'icon' ? (item.icon || item.itemID) : item.itemID;
         const filename = `${baseName}.${ext}`;
         const isPng = ext === 'png';
-        // Use the actual displayed src
         const displayedSrc = modalImg.src;
         fetchImageAsBlob(displayedSrc)
             .then(blob => {
@@ -1085,6 +1204,30 @@ function openItemModalWithData(item) {
     openModal('itemModal', { itemId: item.itemID });
 }
 
+// ----- CLICK TO COPY BADGE -----
+document.getElementById('modalBadges').addEventListener('click', function(e) {
+    const badge = e.target.closest('.badge');
+    if (!badge) return;
+    e.stopPropagation();
+
+    let text = badge.textContent.trim();
+    // For ID badge, copy only the numeric part
+    if (badge.classList.contains('badge-id')) {
+        text = text.replace(/^ID:\s*/, '').trim();
+    }
+
+    navigator.clipboard.writeText(text)
+        .then(() => {
+            badge.classList.add('copied');
+            setTimeout(() => {
+                badge.classList.remove('copied');
+            }, 1500);
+        })
+        .catch(() => {
+            showToast('Failed to copy');
+        });
+});
+
 // --------------------------------------------------------------
 //  HELPER: Fetch image as blob (cache-first, then fallback)
 // --------------------------------------------------------------
@@ -1094,13 +1237,11 @@ async function fetchImageAsBlob(imgUrl) {
         return blob;
     } catch (err) {
         console.warn('fetchImageAsBlob: failed for', imgUrl, err);
-        // Try fallback image (error.webp) with same cache-first logic
         const fallbackUrl = CONFIG.FALLBACK_IMAGE_URL;
         try {
             const { blob } = await loadImageWithRetry(fallbackUrl);
             return blob;
         } catch {
-            // Ultimate fallback: direct fetch (might still fail)
             const response = await fetch(fallbackUrl);
             if (!response.ok) throw new Error('Failed to load fallback');
             return await response.blob();
@@ -1140,7 +1281,6 @@ async function convertBlobToPng(blob) {
 function triggerDownload(primaryUrl, filename) {
     fetchImageAsBlob(primaryUrl)
     .then(blob => {
-        // Determine if we need PNG conversion based on filename extension
         const ext = filename.split('.').pop().toLowerCase();
         if (ext === 'png') {
             return convertBlobToPng(blob);
@@ -1237,9 +1377,7 @@ modalShareBtn.addEventListener('click', function() {
 //  ITEM CLICK HANDLER – now accepts an optional imgSrc
 // --------------------------------------------------------------
 function handleItemClick(item, imgSrc) {
-    // If imgSrc not provided, construct from item ID (fallback)
     const iconUrl = imgSrc || CONFIG.CDN_BASE_URL + item.itemID + '.webp';
-    // Determine filename based on downloadAs selection
     const dlOption = downloadAs.value;
     const parts = dlOption.split('.');
     const pattern = parts[0];
@@ -1252,13 +1390,10 @@ function handleItemClick(item, imgSrc) {
     if (clickAction.value === 'details') {
         openItemModalWithData(item);
     } else if (clickAction.value === 'download') {
-        // Use the actual displayed image src
         triggerDownload(iconUrl, dlFileName);
     } else if (clickAction.value === 'copyIcon') {
-        // Copy the displayed image
         copyImageToClipboard(iconUrl, null, item.itemID);
     } else {
-        // copy ID
         navigator.clipboard.writeText(String(item.itemID)).then(() => {
             const tick = document.getElementById(`tick-${item.itemID}`);
             if (tick) {
@@ -2116,15 +2251,15 @@ async function saveLocalCache(rawData) {
     }
 }
 
-// --------------------------------------------------------------
-//  ROBUST IMAGE LOADER – with total timeout (5s)
-// --------------------------------------------------------------
+// ================================================================
+//  🖼️  ROBUST IMAGE LOADER WITH FALLBACK CDN ON 403
+// ================================================================
 async function loadImageWithRetry(url) {
     const CACHE_TIMEOUT = 2000;
     const RETRY_DELAY = 500;
     const TOTAL_TIMEOUT = 10000;
 
-    async function attemptCache() {
+    async function attemptCache(url) {
         try {
             const cache = await caches.open('ff-icons');
             const response = await cache.match(url);
@@ -2137,44 +2272,76 @@ async function loadImageWithRetry(url) {
         }
     }
 
-    function withTimeout(promise, ms) {
-        return Promise.race([
-            promise,
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms))
-        ]);
-    }
-
-    async function loadFromNetworkAndCache() {
-        const cache = await caches.open('ff-icons');
-        await cache.delete(url);
-        const response = await fetch(url);
-        if (!response.ok) {
-            const err = new Error(`Network fetch failed: ${response.status}`);
-            err.status = response.status;
+    async function fetchWithTimeout(url, timeout) {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeout);
+        try {
+            const response = await fetch(url, { signal: controller.signal });
+            clearTimeout(id);
+            return response;
+        } catch (err) {
+            clearTimeout(id);
             throw err;
         }
-        cache.put(url, response.clone());
-        const blob = await response.blob();
-        if (!blob || blob.size === 0) throw new Error('Empty blob from network');
-        return blob;
+    }
+
+    async function networkFetchWithFallback(primaryUrl) {
+        let response;
+        try {
+            response = await fetchWithTimeout(primaryUrl, 8000);
+        } catch (err) {
+            const netErr = new Error('Network error: ' + err.message);
+            netErr.status = 0;
+            throw netErr;
+        }
+
+        if (response.ok) {
+            return response;
+        }
+
+        if (response.status === 403) {
+            const fallbackUrl = primaryUrl.replace(CONFIG.CDN_BASE_URL, CONFIG.FALLBACK_CDN_BASE_URL);
+            try {
+                const fallbackResponse = await fetchWithTimeout(fallbackUrl, 5000);
+                if (fallbackResponse.ok) {
+                    return fallbackResponse;
+                }
+                const err = new Error(`Fallback CDN returned ${fallbackResponse.status}`);
+                err.status = fallbackResponse.status;
+                throw err;
+            } catch (fallbackErr) {
+                const err = new Error(`Primary CDN 403 and fallback failed: ${fallbackErr.message}`);
+                err.status = 403;
+                throw err;
+            }
+        }
+
+        const err = new Error(`Network fetch failed: ${response.status}`);
+        err.status = response.status;
+        throw err;
     }
 
     const overallTimeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('loadImageWithRetry timeout')), TOTAL_TIMEOUT)
+        setTimeout(() => reject(new Error('loadImageWithRetry total timeout')), TOTAL_TIMEOUT)
     );
 
     try {
         const result = await Promise.race([
             (async () => {
-                let blob = await withTimeout(attemptCache(), CACHE_TIMEOUT);
+                let blob = await withTimeout(attemptCache(url), CACHE_TIMEOUT);
                 if (blob) return { blob, fromCache: true };
 
                 await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-                blob = await withTimeout(attemptCache(), CACHE_TIMEOUT);
+                blob = await withTimeout(attemptCache(url), CACHE_TIMEOUT);
                 if (blob) return { blob, fromCache: true };
 
-                blob = await loadFromNetworkAndCache();
-                return { blob, fromCache: false };
+                const response = await networkFetchWithFallback(url);
+                const cache = await caches.open('ff-icons');
+                const clonedResponse = response.clone();
+                cache.put(url, clonedResponse).catch(() => {});
+                const dataBlob = await response.blob();
+                if (!dataBlob || dataBlob.size === 0) throw new Error('Empty blob from network');
+                return { blob: dataBlob, fromCache: false };
             })(),
             overallTimeout
         ]);
@@ -2182,6 +2349,13 @@ async function loadImageWithRetry(url) {
     } catch (err) {
         throw err;
     }
+}
+
+function withTimeout(promise, ms) {
+    return Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Cache timeout')), ms))
+    ]);
 }
 
 // --------------------------------------------------------------
@@ -2229,7 +2403,7 @@ function initWorker() {
     return false;
 }
 
-function parseDatabaseWithWorker(url, nocache = false) {
+function parseDatabaseWithWorker(rawData) {
     return new Promise((resolve, reject) => {
         if (!dbWorker) {
             reject(new Error('Worker not available'));
@@ -2250,7 +2424,7 @@ function parseDatabaseWithWorker(url, nocache = false) {
             }
         };
         dbWorker.addEventListener('message', handler);
-        dbWorker.postMessage({ type: 'load', url, nocache });
+        dbWorker.postMessage({ type: 'parse', rawData });
     });
 }
 
@@ -2267,7 +2441,7 @@ function rebuildItemsMap() {
 }
 
 // --------------------------------------------------------------
-//  DATABASE SYNC & PARSING LOGIC (UPDATED to store metadata)
+//  DATABASE SYNC & PARSING LOGIC (UPDATED with fallback)
 // --------------------------------------------------------------
 function parseAndSetDatabase(uint8Array) {
     try {
@@ -2368,29 +2542,27 @@ async function initDatabase(forceSync = false) {
         let items = null;
         let updatedOn = null;
 
+        // Fetch with fallback using fetchWithFallback (no worker network)
+        const response = await fetchWithFallback(
+            CONFIG.DATABASE_URL + '?nocache=' + Date.now(),
+            CONFIG.FALLBACK_DATABASE_URL + '?nocache=' + Date.now(),
+            { timeout: 15000 } // generous timeout for database download
+        );
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        loadingText.textContent = 'Extracting data...';
+        const ds = new DecompressionStream('gzip');
+        const decompressed = response.body.pipeThrough(ds);
+        const arrayBuffer = await new Response(decompressed).arrayBuffer();
+        rawData = new Uint8Array(arrayBuffer);
+
         if (useWorker) {
-            const result = await parseDatabaseWithWorker(CONFIG.DATABASE_URL, true);
-            rawData = result.rawData;
+            loadingText.textContent = 'Parsing data...';
+            const result = await parseDatabaseWithWorker(rawData);
             items = result.items;
             updatedOn = result.updatedOn;
-            metadataObj = { updated_on: updatedOn || "Unknown" };
-            rawDbUpdatedOnText = updatedOn || "Unknown";
         } else {
-            loadingText.textContent = 'Getting latest database...';
-            const dbUrl = CONFIG.DATABASE_URL + '?nocache=' + Date.now();
-            const response = await fetch(dbUrl, { cache: 'no-store' });
-            if (!response.ok) {
-                const err = new Error(`HTTP ${response.status}`);
-                err.status = response.status;
-                throw err;
-            }
-
-            loadingText.textContent = 'Extracting data...';
-            const ds = new DecompressionStream('gzip');
-            const decompressed = response.body.pipeThrough(ds);
-            const arrayBuffer = await new Response(decompressed).arrayBuffer();
-            rawData = new Uint8Array(arrayBuffer);
-
             loadingText.textContent = 'Loading data...';
             const decoded = MessagePack.decode(rawData);
             if (Array.isArray(decoded)) {
@@ -2408,14 +2580,14 @@ async function initDatabase(forceSync = false) {
                 items = [];
                 updatedOn = "Unknown";
             }
-            metadataObj = { updated_on: updatedOn || "Unknown" };
-            rawDbUpdatedOnText = updatedOn || "Unknown";
         }
 
-        if (!items || !rawData) throw new Error('Failed to get data');
+        if (!items) throw new Error('Failed to parse data');
 
         loadingText.textContent = 'Loading data...';
         allItems = items;
+        metadataObj = { updated_on: updatedOn || "Unknown" };
+        rawDbUpdatedOnText = updatedOn || "Unknown";
         rebuildItemsMap();
         dbUpdatedOnText = formatDatabaseDate(rawDbUpdatedOnText);
         document.getElementById('dbVersionUI').textContent = rawDbUpdatedOnText;
@@ -2499,9 +2671,10 @@ function applyFilters() {
             if (rDesc && item.description && item.description.toLowerCase().includes(query)) matchQuery = true;
             if (rIcon && item.icon && item.icon.toLowerCase().includes(query)) matchQuery = true;
         }
-        const matchTag = !tag || item.tag === tag;
-        const matchType = !type || item.type === type;
-        const matchRare = !rare || item.rarity === rare;
+        const matchTag = !tag || (item.tag && item.tag.toLowerCase() === tag.toLowerCase());
+        const matchType = !type || (item.type && item.type.toLowerCase() === type.toLowerCase());
+        const matchRare = !rare || (item.rarity && item.rarity.toLowerCase() === rare.toLowerCase());
+
         return matchQuery && matchTag && matchType && matchRare;
     });
 
@@ -2618,9 +2791,6 @@ function renderPage(direction) {
     }
 }
 
-// --------------------------------------------------------------
-//  SCROLL PAGINATION TO SHOW ACTIVE PAGE
-// --------------------------------------------------------------
 function scrollPaginationToActive() {
     const activeBtn = pageNumbersEl.querySelector('.page-btn.active');
     if (activeBtn) {
@@ -2628,9 +2798,6 @@ function scrollPaginationToActive() {
     }
 }
 
-// --------------------------------------------------------------
-//  BUILD ITEM CARDS – with reload button and robust loading
-// --------------------------------------------------------------
 function buildItemCards(items) {
     const frag = document.createDocumentFragment();
     items.forEach((item, index) => {
@@ -2649,7 +2816,6 @@ function buildItemCards(items) {
         img.setAttribute('oncontextmenu', 'return false');
         img.dataset.originalUrl = iconUrl;
 
-        // Reload button
         const reloadBtn = document.createElement('button');
         reloadBtn.className = 'reload-icon-btn';
         reloadBtn.dataset.itemId = String(item.itemID);
@@ -2674,7 +2840,6 @@ function buildItemCards(items) {
         imgContainer.appendChild(img);
         imgContainer.appendChild(reloadBtn);
 
-        // Helper to load image
         function loadCardImage(imgEl, item, btn) {
             const url = imgEl.dataset.originalUrl;
             loadImageWithRetry(url)
@@ -2698,7 +2863,6 @@ function buildItemCards(items) {
 
                     imgEl.onload = markLoaded;
                     imgEl.onerror = (ev) => {
-                        // Use getFallbackUrl with the error event
                         const fallbackUrl = getFallbackUrl(ev);
                         imgEl.src = fallbackUrl;
                         imgEl.classList.add('is-fallback');
@@ -2752,10 +2916,8 @@ function buildItemCards(items) {
                 });
         }
 
-        // Start loading
         loadCardImage(img, item, reloadBtn);
 
-        // Star button
         const starBtn = document.createElement('button');
         starBtn.className = 'star-btn';
         starBtn.dataset.id = String(item.itemID);
@@ -2793,7 +2955,6 @@ function buildItemCards(items) {
         card.appendChild(h3);
         card.appendChild(small);
 
-        // Click handler passes current img src
         card.addEventListener('click', (e) => {
             const imgSrc = img.src;
             handleItemClick(item, imgSrc);
@@ -3056,7 +3217,6 @@ document.addEventListener('touchend', () => {
     isSwiping = false;
 }, { passive: true });
 
-// Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
     if (activeModalStack.length > 0) return;
     const tag = document.activeElement?.tagName?.toLowerCase();
