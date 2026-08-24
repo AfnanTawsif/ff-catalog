@@ -1,5 +1,15 @@
 [
     {
+        "version": "v1.2.1",
+        "logs": [
+            "Added new type filter 'Pyro Pets'",
+            "'Rarity' is no longer treated as primary tag in database info",
+            "Added icons for network error and 403 status along with retry buttons",
+            "Fixed download button: saves exactly the shown item icon or error image",
+            "Tag filter ignores dummy OB90 & higher"
+        ]
+    },
+    {
         "version": "v1.2.0",
         "logs": [
             "Switched item and fallback image sources to WebP for improved efficiency",
