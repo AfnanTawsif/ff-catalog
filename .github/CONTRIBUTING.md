@@ -2,7 +2,7 @@
 
 Thank you for your interest in contributing! This project consists of three main parts:
 
-- **PNG icons** – item images
+- **WEBP icons** – item images
 - **Database** – the item data in MessagePack format
 - **WebApp** – the frontend code (HTML, CSS, JS, Service Worker)
 
@@ -24,17 +24,17 @@ Please read the following guidelines before submitting any changes.
 
 ### Where to place icons
 
-All item icons are stored in the `PNG/` folder at the root of the repository. Each icon is named after its item ID (e.g., `101000001.png`).
+All item icons are stored in the `Item-webp/` folder at the root of the repository. Each icon is named after its item ID (e.g., `101000001.webp`).
 
 ### How to add or update an icon
 
 1. **Locate the missing or outdated icon.**
-2. **Create or download a PNG image** – ideally **218x218 px**.
-3. **Name it exactly as the item ID** – e.g., `907092607.png`.
-4. **Place it in the `PNG/` folder**.
+2. **Create or download a WEBP image** – ideally **218x218 px**.
+3. **Name it exactly as the item ID** – e.g., `907092607.webp`.
+4. **Place it in the `Item-webp/` folder**.
 5. **Commit and push** – open a pull request.
 
-> **Note:** The app uses the CDN URL `https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/PNG/{itemID}.png`. After your PR is merged, the CDN cache will automatically update (may take a few minutes).
+> **Note:** The app uses the CDN URL `https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/Item-webp/{itemID}.webp`. After your PR is merged, the CDN cache will automatically update (may take a few minutes).
 
 ---
 
@@ -42,7 +42,7 @@ All item icons are stored in the `PNG/` folder at the root of the repository. Ea
 
 ### Database format
 
-The database is a **MessagePack** file (`database.msgpack.gz`). It is a gzipped binary representation of a JSON array of items. Each item object should have at least:
+The database is a **MessagePack** file (`database.msgpack.gz`). It is a gzipped binary representation of a JSON array of items. Each item object should have at least first 3 keys listed here-
 
 ```json
 {
@@ -50,7 +50,7 @@ The database is a **MessagePack** file (`database.msgpack.gz`). It is a gzipped 
   "name": "Item Name",
   "icon": "icon_name",
   "type": "Bundles",
-  "Rare": "PURPLE",
+  "rarity": "PURPLE",
   "tag": "OB54",
   "description": "Item description"
 }
