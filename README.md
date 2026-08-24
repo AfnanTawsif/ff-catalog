@@ -27,6 +27,7 @@ The app checks for a new database every 24 hours, and you can force a sync anyti
 
 **🏎️ Blazing Performance**
   - 'Reduce visual effects' option for best performance on weak devices.
+  - Uses WEBP instead of PNG for faster loads.
   - Lazy-loads images & animations only for items on current page.
   - Uses a **Web Worker** to parse the MessagePack database off the main thread – no UI jank.
   - Decompression (`DecompressionStream`) is hardware-accelerated in modern browsers.
@@ -81,32 +82,32 @@ The app checks for a new database every 24 hours, and you can force a sync anyti
 You can directly embed any Free Fire item icon using the following URL pattern:
 
 ```text
-https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/PNG/{itemID}.png
+https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/Item-webp/{itemID}.webp
 ```
 
 Replace `{itemID}` with the numeric item ID (e.g., `907092607`).
 
 **Example:**
 
-![Example Icon](https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/PNG/907092607.png)
+![Example Icon](https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/Item-webp/907092607.webp)
 
-`https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/PNG/907092607.png`
+`https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/Item-webp/907092607.webp`
 
 All images are served with optimal caching headers via jsDelivr.
 
 ---
 
-## 📦 Database & PNG Source
+## 📦 Database & WEBP Source
 
 The database and icons are maintained separately from the WebApp code.
 
 **Database**:
   [`https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/database.msgpack.gz`](https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/database.msgpack.gz)
-  - Original source: [Link](https://ff-item.netlify.app/data.msgpack.gz)
+  - Original source: [SOURCES.md](./SOURCES.md)
 
-**PNG Icons:**
-  [`https://github.com/AfnanTawsif/ff-catalog/tree/main/PNG`](https://github.com/AfnanTawsif/ff-catalog/tree/main/PNG)
-  - Original source: [Link](https://github.com/ShahGCreator/icon)
+**WEBP Icons:**
+  [`https://github.com/AfnanTawsif/ff-catalog/tree/main/Item-webp`](https://github.com/AfnanTawsif/ff-catalog/tree/main/Item-webp)
+  - Original source: [SOURCES.md](./SOURCES.md)
 
 The database and icons are **updated regularly** – either when new items are added in the source repository or when I manually curate missing assets.
 
@@ -131,8 +132,6 @@ If you create a modified version or derivative work of this project (including f
 - Clearly state the changes you made from the original project.
 - Make the source code accessible to all users of your modified version.
 
-**Note:** The `PNG/` icons and `database.msgpack.gz` are sourced from ShahGCreator and are licensed under the **MIT License**. This MIT license applies **only** to those asset files, not to the WebApp codebase itself.
-
 For full license details, see the [`LICENSE`](./LICENSE) file in the repository root.
 
 ### 3. Project Structure
@@ -152,7 +151,7 @@ ff-catalog/
 │   └── Online/                      # Dynamic files loaded via CDN
 │       ├── whats_new.json           # Changelog for WebApp
 │       └── author.jpg               # Author avatar
-├── PNG/                             # All item icons (PNG, named by item ID)
+├── Item-webp/                             # All item icons (WEBP, named by item ID)
 ├── database.msgpack.gz               # Compressed database
 ├── README.md                         # This file
 └── LICENSE                           # MIT License
@@ -165,7 +164,7 @@ All external URLs and author info are centralized in the `CONFIG` object at the 
 ```js
 const CONFIG = {
     WEBSITE_URL: '',                       // Your live site URL
-    CDN_BASE_URL: '.../PNG/',              // Base for item icons
+    CDN_BASE_URL: '.../Item-webp/',              // Base for item icons
     DATABASE_URL: '.../database.msgpack.gz',
     FALLBACK_IMAGE_URL: 'icons/error.svg',
     GITHUB_REPO_URL: '...',                // Your repo URL
@@ -180,7 +179,7 @@ Update these to point to your own fork and CDN endpoints.
 
 ### 5. Updating Icons
 
-Place new item icon PNGs in the `PNG/` folder, named with the item ID (e.g., `123456789.png`).
+Place new item icon WEBPs in the `Item-webp/` folder, named with the item ID (e.g., `123456789.webp`).
 
 If you need to generate app icons for the WebApp (PWA), use [maskable.app](https://maskable.app/) to create `icon-192.png`, `icon-512.png`, etc., and place them in `WebApp/App/icons/`.
 
@@ -201,7 +200,7 @@ Example of json format:
     "itemID": 101000001,
     "name": "Nulla",
     "description": "Nobody knows how she got onto Bermuda, except that she was here before everyone else. Extremely good at adapting to the environment, she is like a chameleon that survives and thrives.",
-    "Rare": "NONE",
+    "rarity": "NONE",
     "type": "Characters"
   },
   {
@@ -210,7 +209,7 @@ Example of json format:
     "name": "Choice Loot Crate",
     "description": "Choose wisely",
     "tag": "OB30",
-    "Rare": "BLUE",
+    "rarity": "BLUE",
     "type": "Choice Crates"
   },
 ]
@@ -268,7 +267,7 @@ Special thanks to all contributors who help keep this catalog updated!
 
 ## ❤️ Credits
 
-- **Database & icons:** ShahGCreator
+- **Database & icons:** Projects inside [SOURCES.md](./SOURCES.md)
 - **Built with:** ☕ pure caffeine and late-night commits.
 
 
