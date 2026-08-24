@@ -1,5 +1,16 @@
 [
     {
+        "version": "v1.2.2",
+        "logs": [
+            "Full Details menu info pills can now be clicked to copy their values",
+            "Added statically.io as a fallback CDN for 403 errors caused by jsDelivr rate limits",
+            "Filter values are now case-insensitive",
+            "Redesigned the changelog UI and added pagination-based lazy loading",
+            "Moved fetching and decompression from the db-worker to the main thread, leaving the worker responsible only for parsing and making caching errors easier to handle",
+            "Improved consistency in Reduced Visual Effects mode and increased timeouts for changelog and author image fetching"
+        ]
+    },
+    {
         "version": "v1.2.1",
         "logs": [
             "Added new type filter 'Pyro Pets'",
