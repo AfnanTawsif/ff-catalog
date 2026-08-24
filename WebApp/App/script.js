@@ -23,9 +23,9 @@
 
 const CONFIG = {
     WEBSITE_URL: '',
-    CDN_BASE_URL: 'https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/PNG/',
+    CDN_BASE_URL: 'https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/Item-webp/',
     DATABASE_URL: 'https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/database.msgpack.gz',
-    FALLBACK_IMAGE_URL: 'icons/error.svg',
+    FALLBACK_IMAGE_URL: 'icons/error.webp',
     GITHUB_REPO_URL: 'https://github.com/AfnanTawsif/ff-catalog',
     GITHUB_API_TREE_URL: 'https://api.github.com/repos/AfnanTawsif/ff-catalog/git/trees/main?recursive=1',
     WHATS_NEW_URL: 'https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/WebApp/Online/whats_new.json',
@@ -142,29 +142,29 @@ function registerServiceWorker() {
     }
 
     return navigator.serviceWorker.register('sw.js')
-        .then(reg => {
-            swRegistration = reg;
-            console.log('Service Worker registered successfully');
-            reg.update().catch(() => {});
+    .then(reg => {
+        swRegistration = reg;
+        console.log('Service Worker registered successfully');
+        reg.update().catch(() => {});
 
-            reg.addEventListener('updatefound', () => {
-                const newWorker = reg.installing;
-                newWorker.addEventListener('statechange', () => {
-                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                        sessionStorage.setItem('sw_update_pending', 'true');
-                        sessionStorage.setItem('webapp_updated', 'true');
-                        sessionStorage.setItem('clear_url_on_load', 'true');
-                    }
-                });
+        reg.addEventListener('updatefound', () => {
+            const newWorker = reg.installing;
+            newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    sessionStorage.setItem('sw_update_pending', 'true');
+                    sessionStorage.setItem('webapp_updated', 'true');
+                    sessionStorage.setItem('clear_url_on_load', 'true');
+                }
             });
-
-            return reg;
-        })
-        .catch(err => {
-            console.error('SW Registration failed:', err);
-            swRegistration = null;
-            return Promise.reject(err);
         });
+
+        return reg;
+    })
+    .catch(err => {
+        console.error('SW Registration failed:', err);
+        swRegistration = null;
+        return Promise.reject(err);
+    });
 }
 
 if ('serviceWorker' in navigator) {
@@ -259,7 +259,7 @@ function getFavoritedItems() {
         const item = itemsById.get(f.id);
         if (item) items.push(item);
     });
-    return items;
+        return items;
 }
 
 // --------------------------------------------------------------
@@ -398,7 +398,7 @@ function formatDatabaseDate(dateStr) {
     const monthNum = parseInt(parts[1], 10);
     const day = parseInt(parts[2], 10);
     const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
-        "November", "December"
+    "November", "December"
     ];
     const monthName = months[monthNum - 1];
     if (!monthName || isNaN(day)) return dateStr;
@@ -442,10 +442,10 @@ async function showWhatsNew(tutorial = false) {
 
     reportTitle.textContent = "What's New?";
     reportContent.innerHTML = `
-        <div class="whatsnew-loading">
-            <div class="spinner"></div>
-            <p>Loading changelogs...</p>
-        </div>
+    <div class="whatsnew-loading">
+    <div class="spinner"></div>
+    <p>Loading changelogs...</p>
+    </div>
     `;
 
     const modal = document.getElementById('reportModal');
@@ -560,13 +560,13 @@ function dismissSettingsBubble() {
 function getFallbackAuthorSVG() {
     return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="130" height="130">
-            <circle cx="50" cy="50" r="48" fill="#2a2a2a" stroke="#444" stroke-width="2"/>
-            <circle cx="50" cy="35" r="20" fill="#555"/>
-            <circle cx="50" cy="35" r="18" fill="#666"/>
-            <ellipse cx="50" cy="80" rx="30" ry="22" fill="#555"/>
-            <ellipse cx="50" cy="80" rx="28" ry="20" fill="#666"/>
+        <circle cx="50" cy="50" r="48" fill="#2a2a2a" stroke="#444" stroke-width="2"/>
+        <circle cx="50" cy="35" r="20" fill="#555"/>
+        <circle cx="50" cy="35" r="18" fill="#666"/>
+        <ellipse cx="50" cy="80" rx="30" ry="22" fill="#555"/>
+        <ellipse cx="50" cy="80" rx="28" ry="20" fill="#666"/>
         </svg>
-    `)}`;
+        `)}`;
 }
 
 async function loadAuthorImageWithCache() {
@@ -853,11 +853,17 @@ function adjustIconNameOverflow(el) {
 let currentShareItemId = null;
 
 async function populateItemModal(item) {
-    const iconUrl = CONFIG.CDN_BASE_URL + item.itemID + '.png';
+    const iconUrl = CONFIG.CDN_BASE_URL + item.itemID + '.webp';
     const fallbackUrl = CONFIG.FALLBACK_IMAGE_URL;
     const modalImg = document.getElementById('modalImg');
-    const dlFileName = downloadAs.value === 'name' ? (item.icon ? `${item.icon}.png` : `${item.itemID}.png`) :
-        `${item.itemID}.png`;
+
+    // Determine filename based on downloadAs selection
+    const dlOption = downloadAs.value; // e.g., "icon.webp", "id.png"
+    const parts = dlOption.split('.');
+    const pattern = parts[0]; // "icon" or "id"
+    const ext = parts[1];     // "webp" or "png"
+    let baseName = pattern === 'icon' ? (item.icon || item.itemID) : item.itemID;
+    const dlFileName = `${baseName}.${ext}`;
 
     currentShareItemId = item.itemID;
 
@@ -868,7 +874,7 @@ async function populateItemModal(item) {
     }
     modalImg.removeAttribute('src');
     modalImg.classList.remove('loaded');
-    delete modalImg.dataset.loaded;   // Critical: clear stale flag
+    delete modalImg.dataset.loaded;
     modalImg.dataset.failed = "false";
     modalImg.onload = null;
     modalImg.onerror = null;
@@ -879,7 +885,6 @@ async function populateItemModal(item) {
         const objectUrl = URL.createObjectURL(blob);
         modalImg.dataset.objectUrl = objectUrl;
 
-        // --- Robust image loading with double RAF to ensure paint ---
         const markLoaded = () => {
             if (modalImg.dataset.loaded) return;
             modalImg.dataset.loaded = 'true';
@@ -911,7 +916,6 @@ async function populateItemModal(item) {
         }
 
         if (!fromCache) recordImageSize(blob.size);
-        // -------------------------------------------------------
     } catch (err) {
         console.warn(`Failed to load icon for ${item.itemID}:`, err);
         modalImg.src = fallbackUrl;
@@ -930,9 +934,9 @@ async function populateItemModal(item) {
         if (displayType.toLowerCase().endsWith('s')) displayType = displayType.slice(0, -1);
         badgesHTML += `<span class="badge badge-type">${displayType}</span>`;
     }
-    if (item.Rare) {
-        const mappedName = rarityMap[item.Rare] || item.Rare;
-        badgesHTML += `<span class="badge rare-${item.Rare}">${mappedName}</span>`;
+    if (item.rarity) {
+        const mappedName = rarityMap[item.rarity] || item.rarity;
+        badgesHTML += `<span class="badge rare-${item.rarity}">${mappedName}</span>`;
     }
     if (item.tag) {
         const tags = item.tag.split(',').map(t => t.trim());
@@ -945,7 +949,26 @@ async function populateItemModal(item) {
     document.getElementById('modalDesc').textContent = item.description || 'No description available.';
 
     const dlBtn = document.getElementById('modalDlBtn');
-    dlBtn.onclick = () => triggerDownload(iconUrl, dlFileName);
+    // When download is triggered, we need to use the current downloadAs value
+    dlBtn.onclick = () => {
+        const currentDlOption = downloadAs.value;
+        const parts = currentDlOption.split('.');
+        const pattern = parts[0];
+        const ext = parts[1];
+        let baseName = pattern === 'icon' ? (item.icon || item.itemID) : item.itemID;
+        const filename = `${baseName}.${ext}`;
+        const isPng = ext === 'png';
+        // Download the image: we need to fetch the blob and optionally convert
+        fetchImageAsBlob(iconUrl).then(blob => {
+            if (isPng) {
+                return convertBlobToPng(blob);
+            } else {
+                return blob;
+            }
+        }).then(finalBlob => {
+            executeBlobDownload(finalBlob, filename);
+        }).catch(() => alert('Failed to download image.'));
+    };
 
     const modalStar = document.getElementById('modalStarBtn');
     if (modalStar) {
@@ -971,33 +994,59 @@ function openItemModalWithData(item) {
 }
 
 // --------------------------------------------------------------
-//  HELPER: Fetch image as PNG blob
+//  HELPER: Fetch image as blob (raw, no conversion)
 // --------------------------------------------------------------
-async function fetchImageAsPNGBlob(imgUrl) {
+async function fetchImageAsBlob(imgUrl) {
     const fallbackUrl = CONFIG.FALLBACK_IMAGE_URL;
     let response = await fetch(imgUrl);
     if (!response.ok) {
         response = await fetch(fallbackUrl);
     }
-    let blob = await response.blob();
+    return await response.blob();
+}
 
-    if (blob.type === 'image/svg+xml' || imgUrl.endsWith('.svg') || imgUrl.endsWith('.svg?') || imgUrl.includes('.svg')) {
-        try {
-            blob = await svgToPng(blob);
-        } catch (svgErr) {
-            console.warn('SVG to PNG conversion failed, using raw blob', svgErr);
-        }
-    }
-    return blob;
+// --------------------------------------------------------------
+//  CONVERT BLOB TO PNG (in memory) using canvas
+// --------------------------------------------------------------
+async function convertBlobToPng(blob) {
+    return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(blob);
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth || img.width || 256;
+            canvas.height = img.naturalHeight || img.height || 256;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            canvas.toBlob((pngBlob) => {
+                resolve(pngBlob);
+                URL.revokeObjectURL(url);
+            }, 'image/png');
+        };
+        img.onerror = () => {
+            URL.revokeObjectURL(url);
+            reject(new Error('Failed to decode image for PNG conversion'));
+        };
+        img.src = url;
+    });
 }
 
 // --------------------------------------------------------------
 //  DOWNLOAD & COPY IMAGE LOGIC
 // --------------------------------------------------------------
 function triggerDownload(primaryUrl, filename) {
-    fetchImageAsPNGBlob(primaryUrl)
-        .then(blob => executeBlobDownload(blob, filename))
-        .catch(() => alert('Failed to download image.'));
+    fetchImageAsBlob(primaryUrl)
+    .then(blob => {
+        // Determine if we need PNG conversion based on filename extension
+        const ext = filename.split('.').pop().toLowerCase();
+        if (ext === 'png') {
+            return convertBlobToPng(blob);
+        } else {
+            return blob;
+        }
+    })
+    .then(blob => executeBlobDownload(blob, filename))
+    .catch(() => alert('Failed to download image.'));
 }
 
 function executeBlobDownload(blob, filename) {
@@ -1011,41 +1060,19 @@ function executeBlobDownload(blob, filename) {
     window.URL.revokeObjectURL(url);
 }
 
-function svgToPng(svgBlob) {
-    return new Promise((resolve, reject) => {
-        const url = URL.createObjectURL(svgBlob);
-        const img = new Image();
-        img.onload = () => {
-            const width = img.naturalWidth || 256;
-            const height = img.naturalHeight || 256;
-            const canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, width, height);
-            canvas.toBlob((blob) => {
-                resolve(blob);
-            }, 'image/png');
-            URL.revokeObjectURL(url);
-        };
-        img.onerror = () => {
-            URL.revokeObjectURL(url);
-            reject(new Error('Failed to decode SVG'));
-        };
-        img.src = url;
-    });
-}
-
 async function copyImageToClipboard(imgUrl, customBtn, cardItemID) {
     try {
-        const blob = await fetchImageAsPNGBlob(imgUrl);
+        // Fetch the raw blob (webp or fallback)
+        let blob = await fetchImageAsBlob(imgUrl);
+        // Convert to PNG for clipboard compatibility
+        blob = await convertBlobToPng(blob);
         const item = new ClipboardItem({ "image/png": blob });
         await navigator.clipboard.write([item]);
 
         if (customBtn) {
             const originalHTML = customBtn.innerHTML;
             customBtn.innerHTML =
-                `<svg viewBox="0 0 24 24" style="fill: #2196F3; transform: scale(1.3);"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`;
+            `<svg viewBox="0 0 24 24" style="fill: #2196F3; transform: scale(1.3);"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`;
             setTimeout(() => { customBtn.innerHTML = originalHTML; }, 2000);
         }
 
@@ -1097,7 +1124,7 @@ modalShareBtn.addEventListener('click', function() {
             showToast("Item link copied. Ready to share!");
             const originalHTML = this.innerHTML;
             this.innerHTML =
-                `<svg viewBox="0 0 24 24" style="fill: #4CAF50; transform: scale(1.3);"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`;
+            `<svg viewBox="0 0 24 24" style="fill: #4CAF50; transform: scale(1.3);"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`;
             setTimeout(() => { this.innerHTML = originalHTML; }, 2000);
         }).catch(() => {
             showToast("Failed to copy link.");
@@ -1109,9 +1136,14 @@ modalShareBtn.addEventListener('click', function() {
 //  ITEM CLICK HANDLER
 // --------------------------------------------------------------
 function handleItemClick(item) {
-    const iconUrl = CONFIG.CDN_BASE_URL + item.itemID + '.png';
-    const dlFileName = downloadAs.value === 'name' ? (item.icon ? `${item.icon}.png` : `${item.itemID}.png`) :
-        `${item.itemID}.png`;
+    const iconUrl = CONFIG.CDN_BASE_URL + item.itemID + '.webp';
+    // Determine filename based on downloadAs selection
+    const dlOption = downloadAs.value;
+    const parts = dlOption.split('.');
+    const pattern = parts[0];
+    const ext = parts[1];
+    let baseName = pattern === 'icon' ? (item.icon || item.itemID) : item.itemID;
+    const dlFileName = `${baseName}.${ext}`;
 
     currentShareItemId = item.itemID;
 
@@ -1223,8 +1255,8 @@ document.getElementById('updateWebAppBtn').addEventListener('click', async () =>
         let newVersion = null;
         const patterns = [
             /CACHE_NAME\s*=\s*['"][^'"]*-(v[\d\.]+)['"]/,
-            /version\s*[:=]\s*['"](v[\d\.]+)['"]/,
-            /CACHE_NAME\s*=\s*['"]([^'"]*)['"]/
+                                                            /version\s*[:=]\s*['"](v[\d\.]+)['"]/,
+                                                            /CACHE_NAME\s*=\s*['"]([^'"]*)['"]/
         ];
         for (const pat of patterns) {
             const match = text.match(pat);
@@ -1298,7 +1330,7 @@ document.getElementById('dlJson').addEventListener('click', () => {
     const jsonData = [meta, ...allItems];
     triggerLocalDownload(
         new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' }),
-        'ff-catalog.json'
+                         'ff-catalog.json'
     );
 });
 
@@ -1307,10 +1339,10 @@ document.getElementById('dlMsgpack').addEventListener('click', async () => {
     const cache = await getLocalCache();
     if (cache && cache.rawData) {
         triggerLocalDownload(new Blob([cache.rawData], { type: 'application/octet-stream' }),
-            'ff-catalog.msgpack');
+                             'ff-catalog.msgpack');
     } else {
         triggerLocalDownload(new Blob([MessagePack.encode(allItems)], { type: 'application/octet-stream' }),
-            'ff-catalog.msgpack');
+                             'ff-catalog.msgpack');
     }
 });
 
@@ -1358,7 +1390,7 @@ document.getElementById('summarizeBtn').addEventListener('click', () => {
     const extraKeys = new Set();
     allItems.forEach(item => {
         Object.keys(item).forEach(k => {
-            if (!['icon', 'itemID', 'name', 'description'].includes(k)) {
+            if (!['icon', 'itemID', 'name', 'description', 'rarity'].includes(k)) {
                 extraKeys.add(k);
             }
         });
@@ -1367,7 +1399,7 @@ document.getElementById('summarizeBtn').addEventListener('click', () => {
     if (extraKeys.size === 0) {
         reportHTML += `<p>No extra tags found.</p>`;
     } else {
-        reportHTML += `<p>These tags were found except the primary (name, itemID, icon, description) tags:</p><ul>`;
+        reportHTML += `<p>These tags were found except the primary (name, itemID, icon, description, rarity) tags:</p><ul>`;
         extraKeys.forEach(tag => {
             reportHTML += `<li class="copyable-box">${tag}</li>`;
         });
@@ -1388,7 +1420,7 @@ document.getElementById('summarizeBtn').addEventListener('click', () => {
 
     let rareCounts = {};
     allItems.forEach(item => {
-        const r = item.Rare || 'Undefined';
+        const r = item.rarity || 'Undefined';
         rareCounts[r] = (rareCounts[r] || 0) + 1;
     });
 
@@ -1433,7 +1465,6 @@ function loadMissingIconsCache() {
         const raw = localStorage.getItem(MISSING_ICONS_CACHE_KEY);
         if (!raw) return null;
         const parsed = JSON.parse(raw);
-        // Check if cache is recent (e.g., within 1 day)
         if (parsed.timestamp && (Date.now() - parsed.timestamp) < ONE_DAY_MS) {
             return parsed.data;
         }
@@ -1453,7 +1484,7 @@ document.getElementById('findFiltersBtn').addEventListener('click', async () => 
     loadingOverlay.classList.add('active');
 
     try {
-        const ignoredKeys = ['icon', 'itemID', 'name', 'description'];
+        const ignoredKeys = ['icon', 'itemID', 'name', 'description', 'rarity'];
         let allKeys = new Set();
         let dbTags = new Set();
         let dbTypes = new Set();
@@ -1463,165 +1494,158 @@ document.getElementById('findFiltersBtn').addEventListener('click', async () => 
             Object.keys(item).forEach(k => allKeys.add(k));
             if (item.tag) dbTags.add(item.tag);
             if (item.type) dbTypes.add(item.type);
-            if (item.Rare) dbRares.add(item.Rare);
+            if (item.rarity) dbRares.add(item.rarity);
         });
 
-        const extraFields = Array.from(allKeys).filter(k => !ignoredKeys.includes(k));
-        const htmlTags = Array.from(document.querySelectorAll('#tagFilter option')).map(o => o.value).filter(v => v);
-        const htmlTypes = Array.from(document.querySelectorAll('#typeFilter option:not([disabled])')).map(o => o.value).filter(v => v);
-        const htmlRares = Array.from(document.querySelectorAll('#rareFilter option:not([disabled])')).map(o => o.value).filter(v => v);
+            const htmlTags = Array.from(document.querySelectorAll('#tagFilter option')).map(o => o.value).filter(v => v);
+            const htmlTypes = Array.from(document.querySelectorAll('#typeFilter option:not([disabled])')).map(o => o.value).filter(v => v);
+            const htmlRares = Array.from(document.querySelectorAll('#rareFilter option:not([disabled])')).map(o => o.value).filter(v => v);
 
-        const missingTags = Array.from(dbTags).filter(t => !htmlTags.includes(t));
-        const missingTypes = Array.from(dbTypes).filter(t => !htmlTypes.includes(t));
-        const missingRares = Array.from(dbRares).filter(r => !htmlRares.includes(r));
+            const missingTags = Array.from(dbTags).filter(t => !htmlTags.includes(t));
+            const missingTypes = Array.from(dbTypes).filter(t => !htmlTypes.includes(t));
+            const missingRares = Array.from(dbRares).filter(r => !htmlRares.includes(r));
 
-        let missingIconIds = [];
-        let iconCheckError = null;
-        let cacheData = null;
+            let missingIconIds = [];
+            let iconCheckError = null;
+            let cacheData = null;
 
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000);
-            const res = await fetch(CONFIG.GITHUB_API_TREE_URL, {
-                signal: controller.signal
-            });
-            clearTimeout(timeoutId);
-
-            if (!res.ok) {
-                if (res.status === 403) throw new Error("GitHub API rate limit exceeded. Try again later or use VPN.");
-                if (res.status === 404) throw new Error("Repository or branch not found");
-                throw new Error(`HTTP Error ${res.status}`);
-            }
-
-            const data = await res.json();
-            let repoImages = new Set();
-
-            if (data.tree && Array.isArray(data.tree)) {
-                data.tree.forEach(file => {
-                    if (file.path.startsWith('PNG/') && file.path.endsWith('.png')) {
-                        const filename = file.path.replace('PNG/', '').replace('.png', '');
-                        repoImages.add(filename);
-                    }
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+                const res = await fetch(CONFIG.GITHUB_API_TREE_URL, {
+                    signal: controller.signal
                 });
+                clearTimeout(timeoutId);
 
-                allItems.forEach(item => {
-                    if (!repoImages.has(String(item.itemID))) {
-                        missingIconIds.push(item.itemID);
-                    }
-                });
-
-                // Save cache on success
-                const blackWhiteMissing = [];
-                const otherMissing = [];
-                missingIconIds.forEach(id => {
-                    const item = itemsById.get(String(id));
-                    if (item && item.icon === 'UI_Icon_BlackWhite_01') {
-                        blackWhiteMissing.push(id);
-                    } else {
-                        otherMissing.push(id);
-                    }
-                });
-                cacheData = { missingIconIds, blackWhiteMissing, otherMissing };
-                saveMissingIconsCache(cacheData);
-            } else {
-                throw new Error("Invalid API response format");
-            }
-        } catch (e) {
-            iconCheckError = e.name === 'AbortError' ? "Request timed out" : e.message;
-            // Load cache if available
-            cacheData = loadMissingIconsCache();
-        }
-
-        let reportHTML = "";
-
-        // Missing Filters (always shown, no cache)
-        if (missingTags.length === 0 && missingTypes.length === 0 && missingRares.length === 0) {
-            reportHTML +=
-                "<h3 class='report-title'>Missing Filters</h3><p>No missing filters found. HTML is up to date with database.</p>";
-        } else {
-            reportHTML += "<h3 class='report-title'>Missing Filters in html</h3>";
-            if (missingTags.length > 0) reportHTML +=
-                `<h4>Tag filters:</h4><ul><li class="copyable-box">${missingTags.join('</li><li class="copyable-box">')}</li></ul>`;
-            if (missingTypes.length > 0) reportHTML +=
-                `<h4>Type filters:</h4><ul><li class="copyable-box">${missingTypes.join('</li><li class="copyable-box">')}</li></ul>`;
-            if (missingRares.length > 0) reportHTML +=
-                `<h4>Rarity filters:</h4><ul><li class="copyable-box">${missingRares.join('</li><li class="copyable-box">')}</li></ul>`;
-        }
-
-        // Missing Icons section
-        reportHTML += "<h3 class='report-title'>Missing Icons in Repo</h3>";
-        if (iconCheckError) {
-            // Error case: show error message, then cached data if available
-            reportHTML += `<p style="color: #ff4c4c;">Error checking icons: ${iconCheckError}</p>`;
-            if (cacheData) {
-                reportHTML += `<p><strong>Showing cached report:</strong></p>`;
-                const { blackWhiteMissing, otherMissing } = cacheData;
-                if (blackWhiteMissing.length === 0 && otherMissing.length === 0) {
-                    reportHTML += "<p>All items in the database have their corresponding PNG icons on the repository (cached).</p>";
-                } else {
-                    if (blackWhiteMissing.length > 0) {
-                        reportHTML += `<p>Found <strong>${blackWhiteMissing.length}</strong> missing icons with 'UI_Icon_BlackWhite_01' icon (cached):</p><ul>`;
-                        blackWhiteMissing.forEach(id => {
-                            reportHTML += `<li class="copyable-box">${id}</li>`;
-                        });
-                        reportHTML += `</ul>`;
-                    }
-                    if (otherMissing.length > 0) {
-                        reportHTML += `<p><strong>${otherMissing.length}</strong> other missing icons (cached):</p>`;
-                        reportHTML += `<div class="missing-icons-grid">`;
-                        reportHTML += `<div class="grid-header">Item ID</div><div class="grid-header">Icon Name</div>`;
-                        otherMissing.forEach(id => {
-                            const item = itemsById.get(String(id));
-                            const iconName = item ? item.icon : 'N/A';
-                            reportHTML += `<div class="grid-row">`;
-                            reportHTML += `<div class="id-cell"><span class="copyable-box">${id}</span></div>`;
-                            reportHTML += `<div class="name-cell"><span class="copyable-box">${iconName}</span></div>`;
-                            reportHTML += `</div>`;
-                        });
-                        reportHTML += `</div>`;
-                    }
+                if (!res.ok) {
+                    if (res.status === 403) throw new Error("GitHub API rate limit exceeded. Try again later or use VPN.");
+                    if (res.status === 404) throw new Error("Repository or branch not found");
+                    throw new Error(`HTTP Error ${res.status}`);
                 }
-            } else {
-                reportHTML += `<p>No cached report found to show</p>`;
-            }
-        } else if (missingIconIds.length === 0) {
-            reportHTML += "<p>All items in the database have their corresponding PNG icons on the repository.</p>";
-        } else {
-            // Success case: display fresh data (which is already in cacheData)
-            const { blackWhiteMissing, otherMissing } = cacheData || { blackWhiteMissing: [], otherMissing: [] };
-            if (blackWhiteMissing.length > 0) {
-                reportHTML += `<p>Found <strong>${blackWhiteMissing.length}</strong> missing icons with 'UI_Icon_BlackWhite_01' icon:</p><ul>`;
-                blackWhiteMissing.forEach(id => {
-                    reportHTML += `<li class="copyable-box">${id}</li>`;
-                });
-                reportHTML += `</ul>`;
-            }
-            if (otherMissing.length > 0) {
-                reportHTML += `<p><strong>${otherMissing.length}</strong> other missing icons:</p>`;
-                reportHTML += `<div class="missing-icons-grid">`;
-                reportHTML += `<div class="grid-header">Item ID</div><div class="grid-header">Icon Name</div>`;
-                otherMissing.forEach(id => {
-                    const item = itemsById.get(String(id));
-                    const iconName = item ? item.icon : 'N/A';
-                    reportHTML += `<div class="grid-row">`;
-                    reportHTML += `<div class="id-cell"><span class="copyable-box">${id}</span></div>`;
-                    reportHTML += `<div class="name-cell"><span class="copyable-box">${iconName}</span></div>`;
-                    reportHTML += `</div>`;
-                });
-                reportHTML += `</div>`;
-            }
-        }
 
-        document.getElementById('reportTitle').textContent = "Diagnostic Report";
-        document.getElementById('reportContent').innerHTML = reportHTML;
-        const modal = document.getElementById('reportModal');
-        if (modal) {
-            modal.classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
-            if (!activeModalStack.includes('reportModal')) {
-                activeModalStack.push('reportModal');
+                const data = await res.json();
+                let repoImages = new Set();
+
+                if (data.tree && Array.isArray(data.tree)) {
+                    data.tree.forEach(file => {
+                        if (file.path.startsWith('Item-webp/') && file.path.endsWith('.webp')) {
+                            const filename = file.path.replace('Item-webp/', '').replace('.webp', '');
+                            repoImages.add(filename);
+                        }
+                    });
+
+                    allItems.forEach(item => {
+                        if (!repoImages.has(String(item.itemID))) {
+                            missingIconIds.push(item.itemID);
+                        }
+                    });
+
+                    const blackWhiteMissing = [];
+                    const otherMissing = [];
+                    missingIconIds.forEach(id => {
+                        const item = itemsById.get(String(id));
+                        if (item && item.icon === 'UI_Icon_BlackWhite_01') {
+                            blackWhiteMissing.push(id);
+                        } else {
+                            otherMissing.push(id);
+                        }
+                    });
+                    cacheData = { missingIconIds, blackWhiteMissing, otherMissing };
+                    saveMissingIconsCache(cacheData);
+                } else {
+                    throw new Error("Invalid API response format");
+                }
+            } catch (e) {
+                iconCheckError = e.name === 'AbortError' ? "Request timed out" : e.message;
+                cacheData = loadMissingIconsCache();
             }
-        }
+
+            let reportHTML = "";
+
+            if (missingTags.length === 0 && missingTypes.length === 0 && missingRares.length === 0) {
+                reportHTML +=
+                "<h3 class='report-title'>Missing Filters</h3><p>No missing filters found. HTML is up to date with database.</p>";
+            } else {
+                reportHTML += "<h3 class='report-title'>Missing Filters in html</h3>";
+                if (missingTags.length > 0) reportHTML +=
+                    `<h4>Tag filters:</h4><ul><li class="copyable-box">${missingTags.join('</li><li class="copyable-box">')}</li></ul>`;
+                if (missingTypes.length > 0) reportHTML +=
+                    `<h4>Type filters:</h4><ul><li class="copyable-box">${missingTypes.join('</li><li class="copyable-box">')}</li></ul>`;
+                if (missingRares.length > 0) reportHTML +=
+                    `<h4>Rarity filters:</h4><ul><li class="copyable-box">${missingRares.join('</li><li class="copyable-box">')}</li></ul>`;
+            }
+
+            reportHTML += "<h3 class='report-title'>Missing Icons in Repo</h3>";
+            if (iconCheckError) {
+                reportHTML += `<p style="color: #ff4c4c;">Error checking icons: ${iconCheckError}</p>`;
+                if (cacheData) {
+                    reportHTML += `<p><strong>Showing cached report:</strong></p>`;
+                    const { blackWhiteMissing, otherMissing } = cacheData;
+                    if (blackWhiteMissing.length === 0 && otherMissing.length === 0) {
+                        reportHTML += "<p>All items in the database have their corresponding webp icons on the repository (cached).</p>";
+                    } else {
+                        if (blackWhiteMissing.length > 0) {
+                            reportHTML += `<p>Found <strong>${blackWhiteMissing.length}</strong> missing icons with 'UI_Icon_BlackWhite_01' icon (cached):</p><ul>`;
+                            blackWhiteMissing.forEach(id => {
+                                reportHTML += `<li class="copyable-box">${id}</li>`;
+                            });
+                            reportHTML += `</ul>`;
+                        }
+                        if (otherMissing.length > 0) {
+                            reportHTML += `<p><strong>${otherMissing.length}</strong> other missing icons (cached):</p>`;
+                            reportHTML += `<div class="missing-icons-grid">`;
+                            reportHTML += `<div class="grid-header">Item ID</div><div class="grid-header">Icon Name</div>`;
+                            otherMissing.forEach(id => {
+                                const item = itemsById.get(String(id));
+                                const iconName = item ? item.icon : 'N/A';
+                                reportHTML += `<div class="grid-row">`;
+                                reportHTML += `<div class="id-cell"><span class="copyable-box">${id}</span></div>`;
+                                reportHTML += `<div class="name-cell"><span class="copyable-box">${iconName}</span></div>`;
+                                reportHTML += `</div>`;
+                            });
+                            reportHTML += `</div>`;
+                        }
+                    }
+                } else {
+                    reportHTML += `<p>No cached report found to show</p>`;
+                }
+            } else if (missingIconIds.length === 0) {
+                reportHTML += "<p>All items in the database have their corresponding webp icons on the repository.</p>";
+            } else {
+                const { blackWhiteMissing, otherMissing } = cacheData || { blackWhiteMissing: [], otherMissing: [] };
+                if (blackWhiteMissing.length > 0) {
+                    reportHTML += `<p>Found <strong>${blackWhiteMissing.length}</strong> missing icons with 'UI_Icon_BlackWhite_01' icon:</p><ul>`;
+                    blackWhiteMissing.forEach(id => {
+                        reportHTML += `<li class="copyable-box">${id}</li>`;
+                    });
+                    reportHTML += `</ul>`;
+                }
+                if (otherMissing.length > 0) {
+                    reportHTML += `<p><strong>${otherMissing.length}</strong> other missing icons:</p>`;
+                    reportHTML += `<div class="missing-icons-grid">`;
+                    reportHTML += `<div class="grid-header">Item ID</div><div class="grid-header">Icon Name</div>`;
+                    otherMissing.forEach(id => {
+                        const item = itemsById.get(String(id));
+                        const iconName = item ? item.icon : 'N/A';
+                        reportHTML += `<div class="grid-row">`;
+                        reportHTML += `<div class="id-cell"><span class="copyable-box">${id}</span></div>`;
+                        reportHTML += `<div class="name-cell"><span class="copyable-box">${iconName}</span></div>`;
+                        reportHTML += `</div>`;
+                    });
+                    reportHTML += `</div>`;
+                }
+            }
+
+            document.getElementById('reportTitle').textContent = "Diagnostic Report";
+            document.getElementById('reportContent').innerHTML = reportHTML;
+            const modal = document.getElementById('reportModal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+                if (!activeModalStack.includes('reportModal')) {
+                    activeModalStack.push('reportModal');
+                }
+            }
 
     } catch (err) {
         loadingOverlay.classList.remove('active');
@@ -1631,6 +1655,58 @@ document.getElementById('findFiltersBtn').addEventListener('click', async () => 
         loadingOverlay.classList.remove('active');
     }
 });
+
+// --------------------------------------------------------------
+//  DYNAMIC TAG FILTER POPULATION (silent)
+// --------------------------------------------------------------
+function populateTagFilter(items) {
+    const tags = new Set();
+    items.forEach(item => {
+        if (item.tag) {
+            const tagList = item.tag.split(',').map(t => t.trim());
+            tagList.forEach(t => tags.add(t));
+        }
+    });
+
+    const obTags = [];
+    const nonObTags = [];
+    tags.forEach(tag => {
+        if (tag.startsWith('OB') && tag !== 'OB90') {
+            obTags.push(tag);
+        } else if (tag !== 'OB90') {
+            nonObTags.push(tag);
+        }
+    });
+
+    obTags.sort((a, b) => {
+        const numA = parseInt(a.replace('OB', ''), 10);
+        const numB = parseInt(b.replace('OB', ''), 10);
+        return numB - numA;
+    });
+
+    nonObTags.sort();
+
+    const sortedTags = [...obTags, ...nonObTags];
+
+    const select = document.getElementById('tagFilter');
+    const currentValue = select.value;
+
+    select.innerHTML = '<option value="">All Tags</option>';
+
+    sortedTags.forEach(tag => {
+        const opt = document.createElement('option');
+        opt.value = tag;
+        opt.textContent = tag;
+        select.appendChild(opt);
+    });
+
+    // Restore selection if still valid
+    if (currentValue && sortedTags.includes(currentValue)) {
+        select.value = currentValue;
+    } else {
+        select.value = '';
+    }
+}
 
 // --------------------------------------------------------------
 //  LOAD & SAVE SETTINGS
@@ -1819,8 +1895,8 @@ function renderStorageBar() {
     if (pct > 90) { storageBarFill.className = 'storage-bar-fill danger'; } else if (pct > 70) { storageBarFill
         .className = 'storage-bar-fill warning'; } else { storageBarFill.className = 'storage-bar-fill'; }
 
-    const usedMB = (currentIconStorageSize / (1024 * 1024)).toFixed(1);
-    storageBarText.textContent = `${usedMB}MB / ${iconStorageLimitMB}MB`;
+        const usedMB = (currentIconStorageSize / (1024 * 1024)).toFixed(1);
+        storageBarText.textContent = `${usedMB}MB / ${iconStorageLimitMB}MB`;
 }
 
 async function checkAndCleanStorage() {
@@ -1984,7 +2060,7 @@ async function loadImageWithRetry(url) {
 }
 
 // --------------------------------------------------------------
-//  ANIMATION PAUSE OBSERVER (still uses IntersectionObserver but only for animations, not for loading)
+//  ANIMATION PAUSE OBSERVER
 // --------------------------------------------------------------
 let animationObserver = null;
 
@@ -2073,15 +2149,15 @@ function parseAndSetDatabase(uint8Array) {
         const decoded = MessagePack.decode(uint8Array);
         if (Array.isArray(decoded)) {
             if (decoded.length > 0 && typeof decoded[0] === 'object' && decoded[0] !== null && (decoded[0]
-                    .updated_on || decoded[0].version || decoded[0]._metadata)) {
+                .updated_on || decoded[0].version || decoded[0]._metadata)) {
                 metadataObj = decoded[0];
-                rawDbUpdatedOnText = metadataObj.updated_on || metadataObj.version || "Unknown";
-                allItems = decoded.slice(1);
-            } else {
-                metadataObj = { updated_on: "Unknown" };
-                allItems = decoded;
-                rawDbUpdatedOnText = "Unknown";
-            }
+            rawDbUpdatedOnText = metadataObj.updated_on || metadataObj.version || "Unknown";
+            allItems = decoded.slice(1);
+                } else {
+                    metadataObj = { updated_on: "Unknown" };
+                    allItems = decoded;
+                    rawDbUpdatedOnText = "Unknown";
+                }
         } else if (typeof decoded === 'object' && decoded !== null) {
             metadataObj = { updated_on: decoded.updated_on || "Unknown" };
             allItems = decoded.items || decoded.data || [];
@@ -2096,6 +2172,9 @@ function parseAndSetDatabase(uint8Array) {
 
         dbUpdatedOnText = formatDatabaseDate(rawDbUpdatedOnText);
         document.getElementById('dbVersionUI').textContent = rawDbUpdatedOnText;
+
+        // Populate tag filter dynamically from the loaded items
+        populateTagFilter(allItems);
 
         applyFilters();
         return true;
@@ -2213,6 +2292,8 @@ async function initDatabase(forceSync = false) {
         dbUpdatedOnText = formatDatabaseDate(rawDbUpdatedOnText);
         document.getElementById('dbVersionUI').textContent = rawDbUpdatedOnText;
 
+        populateTagFilter(allItems);
+
         await saveLocalCache(rawData);
 
         if (forceSync) {
@@ -2261,7 +2342,7 @@ function restoreButtons() {
 }
 
 // --------------------------------------------------------------
-//  FILTER & SEARCH LOGIC
+//  FILTER & SEARCH LOGIC – resets to page 1 on any filter change
 // --------------------------------------------------------------
 function applyFilters() {
     const query = searchInput.value.toLowerCase().trim();
@@ -2292,7 +2373,7 @@ function applyFilters() {
         }
         const matchTag = !tag || item.tag === tag;
         const matchType = !type || item.type === type;
-        const matchRare = !rare || item.Rare === rare;
+        const matchRare = !rare || item.rarity === rare;
         return matchQuery && matchTag && matchType && matchRare;
     });
 
@@ -2310,9 +2391,8 @@ function applyFilters() {
     totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
     if (totalPages === 0) totalPages = 1;
 
-    const oldPage = currentPage;
-    currentPage = Math.min(oldPage, totalPages);
-    if (currentPage < 1) currentPage = 1;
+    // ✅ Reset to page 1 on filter/search change
+    currentPage = 1;
 
     totalPagesUI.textContent = totalPages;
 
@@ -2333,18 +2413,16 @@ function updateSearchHint() {
 }
 
 // --------------------------------------------------------------
-//  RENDER ITEMS – with swipe animation support
+//  RENDER ITEMS – with swipe animation support & auto-scroll pagination
 // --------------------------------------------------------------
 let isTransitioning = false;
 let pendingPageChange = null;
 
 function renderPage(direction) {
-    // direction: 'forward' or 'backward' or null (no animation / initial render)
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     const end = Math.min(start + ITEMS_PER_PAGE, filteredItems.length);
     const pageItems = filteredItems.slice(start, end);
 
-    // Revoke all object URLs from current grid images before clearing
     const currentImgs = grid.querySelectorAll('img');
     currentImgs.forEach(img => {
         if (img.dataset.objectUrl) {
@@ -2363,26 +2441,26 @@ function renderPage(direction) {
     if (pageItems.length === 0) {
         if (favFilterActive && getFavorites().length === 0) {
             grid.innerHTML = `
-                <div class="fav-empty-state">
-                    <span class="big-icon">☆</span>
-                    <h3>No favorites yet</h3>
-                    <p>Click the <strong>☆</strong> star on any item card to add it to your favorites collection.</p>
-                    <div style="display: flex; justify-content: center;">
-                        <button id="favEmptyImportBtn" class="action-btn-small">
-                            <svg viewBox="0 0 24 24" width="16" height="16"><path d="M19 9h-4v7H9v-7H5l7-7 7 7zM5 18v2h14v-2H5z"/></svg>
-                            Import Favorites
-                        </button>
-                    </div>
-                </div>
+            <div class="fav-empty-state">
+            <span class="big-icon">☆</span>
+            <h3>No favorites yet</h3>
+            <p>Click the <strong>☆</strong> star on any item card to add it to your favorites collection.</p>
+            <div style="display: flex; justify-content: center;">
+            <button id="favEmptyImportBtn" class="action-btn-small">
+            <svg viewBox="0 0 24 24" width="16" height="16"><path d="M19 9h-4v7H9v-7H5l7-7 7 7zM5 18v2h14v-2H5z"/></svg>
+            Import Favorites
+            </button>
+            </div>
+            </div>
             `;
             document.getElementById('favEmptyImportBtn')?.addEventListener('click', triggerFavImport);
         } else {
             grid.innerHTML = `
-                <div class="empty-search-state">
-                    <span class="empty-icon">❓</span>
-                    <h3>No items found</h3>
-                    <p>Try adjusting your search or filters.</p>
-                </div>
+            <div class="empty-search-state">
+            <span class="empty-icon">❓</span>
+            <h3>No items found</h3>
+            <p>Try adjusting your search or filters.</p>
+            </div>
             `;
         }
         paginationContainer.style.display = 'none';
@@ -2395,10 +2473,12 @@ function renderPage(direction) {
     paginationContainer.style.display = 'flex';
     updatePaginationUI();
 
+    // Scroll the pagination bar so that the active page button is visible
+    scrollPaginationToActive();
+
     initAnimationObserver();
     document.querySelectorAll('.card').forEach(card => animationObserver.observe(card));
 
-    // If direction is provided, apply the slide-in animation to the grid
     if (direction === 'forward') {
         grid.classList.add('slide-in-right');
         setTimeout(() => {
@@ -2409,6 +2489,16 @@ function renderPage(direction) {
         setTimeout(() => {
             grid.classList.remove('slide-in-left');
         }, 350);
+    }
+}
+
+// --------------------------------------------------------------
+//  SCROLL PAGINATION TO SHOW ACTIVE PAGE
+// --------------------------------------------------------------
+function scrollPaginationToActive() {
+    const activeBtn = pageNumbersEl.querySelector('.page-btn.active');
+    if (activeBtn) {
+        activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     }
 }
 
@@ -2426,57 +2516,60 @@ function buildItemCards(items) {
         imgContainer.className = 'img-container';
 
         const img = document.createElement('img');
-        const iconUrl = CONFIG.CDN_BASE_URL + item.itemID + '.png';
+        const iconUrl = CONFIG.CDN_BASE_URL + item.itemID + '.webp';
         img.alt = item.name || 'Unnamed';
+        img.draggable = false;
+        img.setAttribute('ondragstart', 'return false');
+        img.setAttribute('oncontextmenu', 'return false');
 
         loadImageWithRetry(iconUrl)
-            .then(({ blob, fromCache }) => {
-                const objectUrl = URL.createObjectURL(blob);
-                img.dataset.objectUrl = objectUrl;
+        .then(({ blob, fromCache }) => {
+            const objectUrl = URL.createObjectURL(blob);
+            img.dataset.objectUrl = objectUrl;
 
-                const markLoaded = () => {
-                    if (img.dataset.loaded) return;
-                    img.dataset.loaded = 'true';
+            const markLoaded = () => {
+                if (img.dataset.loaded) return;
+                img.dataset.loaded = 'true';
+                requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
-                        requestAnimationFrame(() => {
-                            img.classList.add('loaded');
-                        });
+                        img.classList.add('loaded');
                     });
-                };
+                });
+            };
 
-                img.onload = markLoaded;
-                img.onerror = () => {
-                    img.src = CONFIG.FALLBACK_IMAGE_URL;
-                    markLoaded();
-                };
-
-                img.src = objectUrl;
-
-                if (img.complete && img.naturalWidth > 0) {
-                    if (img.decode) {
-                        img.decode().then(markLoaded).catch(() => markLoaded());
-                    } else {
-                        markLoaded();
-                    }
-                } else {
-                    if (img.decode) {
-                        img.decode().then(markLoaded).catch(() => {});
-                    }
-                }
-
-                if (!fromCache) {
-                    recordImageSize(blob.size);
-                    if (currentIconStorageSize + pendingSizeAdd > (iconStorageLimitMB * 1024 * 1024)) {
-                        flushStorageUpdate();
-                        checkAndCleanStorage();
-                    }
-                }
-            })
-            .catch(err => {
-                console.warn('Failed to load image:', iconUrl, err);
+            img.onload = markLoaded;
+            img.onerror = () => {
                 img.src = CONFIG.FALLBACK_IMAGE_URL;
-                img.classList.add('loaded');
-            });
+                markLoaded();
+            };
+
+            img.src = objectUrl;
+
+            if (img.complete && img.naturalWidth > 0) {
+                if (img.decode) {
+                    img.decode().then(markLoaded).catch(() => markLoaded());
+                } else {
+                    markLoaded();
+                }
+            } else {
+                if (img.decode) {
+                    img.decode().then(markLoaded).catch(() => {});
+                }
+            }
+
+            if (!fromCache) {
+                recordImageSize(blob.size);
+                if (currentIconStorageSize + pendingSizeAdd > (iconStorageLimitMB * 1024 * 1024)) {
+                    flushStorageUpdate();
+                    checkAndCleanStorage();
+                }
+            }
+        })
+        .catch(err => {
+            console.warn('Failed to load image:', iconUrl, err);
+            img.src = CONFIG.FALLBACK_IMAGE_URL;
+            img.classList.add('loaded');
+        });
 
         imgContainer.appendChild(img);
 
@@ -2549,26 +2642,18 @@ function goToPage(pageNum) {
     if (pageNum === currentPage) return;
 
     const direction = pageNum > currentPage ? 'forward' : 'backward';
-    const oldPage = currentPage;
     currentPage = pageNum;
 
-    // Slide out old page
     const slideOutClass = direction === 'forward' ? 'slide-out-left' : 'slide-out-right';
     grid.classList.add(slideOutClass);
 
     isTransitioning = true;
 
-    // After slide-out animation completes, render new page with slide-in
     const onAnimationEnd = () => {
         grid.removeEventListener('animationend', onAnimationEnd);
         grid.classList.remove(slideOutClass);
-
-        // Render the new page content with slide-in
         renderPage(direction);
-
         isTransitioning = false;
-
-        // Check for pending page change
         if (pendingPageChange !== null) {
             const next = pendingPageChange;
             pendingPageChange = null;
@@ -2578,7 +2663,6 @@ function goToPage(pageNum) {
 
     grid.addEventListener('animationend', onAnimationEnd);
 
-    // Fallback: if animation doesn't fire for some reason
     setTimeout(() => {
         if (isTransitioning) {
             grid.removeEventListener('animationend', onAnimationEnd);
@@ -2593,8 +2677,9 @@ function goToPage(pageNum) {
         }
     }, 400);
 
-    // Update pagination UI immediately for visual feedback
     updatePaginationUI();
+    // Scroll the pagination to the newly selected page
+    scrollPaginationToActive();
     window.scrollTo({ top: 0, behavior: 'smooth' });
     const activeBtn = pageNumbersEl.children[pageNum - 1];
     if (activeBtn) {
@@ -2610,7 +2695,7 @@ document.getElementById('btnNext').addEventListener('click', () => {
 });
 
 let isDown = false,
-    startX, scrollLeft;
+startX, scrollLeft;
 pageNumbersEl.addEventListener('mousedown', (e) => {
     isDown = true;
     startX = e.pageX - pageNumbersEl.offsetLeft;
@@ -2746,16 +2831,12 @@ window.addEventListener('resize', () => {
 // --------------------------------------------------------------
 //  🖐️ SWIPE GESTURES & ⌨️ KEYBOARD SHORTCUTS
 // --------------------------------------------------------------
-// Swipe detection – now ignores touches on the pagination container
 let touchStartX = 0;
 let touchStartY = 0;
 let isSwiping = false;
 
 document.addEventListener('touchstart', (e) => {
-    // Ignore if any modal is open
     if (activeModalStack.length > 0) return;
-
-    // Ignore if touch started inside the pagination container
     if (paginationContainer.contains(e.target)) return;
 
     const touch = e.touches[0];
@@ -2766,8 +2847,6 @@ document.addEventListener('touchstart', (e) => {
 
 document.addEventListener('touchmove', (e) => {
     if (!isSwiping || activeModalStack.length > 0) return;
-
-    // Extra safety: if touch moved into pagination container, cancel
     if (paginationContainer.contains(e.target)) {
         isSwiping = false;
         return;
@@ -2809,6 +2888,23 @@ document.addEventListener('keydown', (e) => {
         if (btn) btn.click();
     }
 });
+
+// --------------------------------------------------------------
+//  IMAGE PROTECTION – global context menu / drag prevention
+// --------------------------------------------------------------
+document.addEventListener('contextmenu', function(e) {
+    // Block all context menus on the entire page
+    e.preventDefault();
+    return false;
+}, { passive: false });
+
+document.addEventListener('dragstart', function(e) {
+    const target = e.target;
+    if (target.tagName === 'IMG') {
+        e.preventDefault();
+        return false;
+    }
+}, { passive: false });
 
 // --------------------------------------------------------------
 //  STARTUP INITIALIZATION

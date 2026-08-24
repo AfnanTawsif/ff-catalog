@@ -1,22 +1,3 @@
-<!--
-    ff-catalog
-
-    Copyright (C) 2026 Afnan Tawsif
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program. If not, see <https://www.gnu.org/licenses/>.
--->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -92,6 +73,8 @@
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            -webkit-user-select: text;
+            user-select: text;
         }
 
         /* Custom Scrollbar for entire website */
@@ -279,6 +262,11 @@
             object-fit: contain;
             display: block;
             border-radius: 50%;
+            pointer-events: none;
+            -webkit-user-drag: none;
+            user-drag: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         @keyframes pulse-glow {
@@ -641,6 +629,35 @@
             color: var(--text-muted);
         }
 
+        /* ==========================================================
+           IMAGE PROTECTION – prevent drag, selection, context menu
+           ========================================================== */
+        img {
+            -webkit-user-drag: none;
+            user-drag: none;
+            -webkit-user-select: none;
+            user-select: none;
+            pointer-events: none;
+            touch-action: none;
+        }
+
+        .img-container img,
+        .item-modal-left .img-wrapper img {
+            pointer-events: none !important;
+            touch-action: none !important;
+        }
+
+        /* Allow text selection on the page, but not on images */
+        body {
+            -webkit-user-select: text;
+            user-select: text;
+        }
+
+        /* Card still clickable, but image inside is not */
+        .card {
+            cursor: pointer;
+        }
+
         /* ----- STAR BUTTON ON CARDS AND MODAL (pure star, no background) ----- */
         .star-btn {
             position: absolute;
@@ -659,6 +676,8 @@
             z-index: 5;
             padding: 0;
             border-radius: 0;
+            pointer-events: auto !important;
+            touch-action: auto !important;
         }
         body.reduce-effects .star-btn {
             transition: none;
@@ -981,6 +1000,13 @@
             position: relative;
             z-index: 1;
             padding: 2px;
+            pointer-events: none !important;
+            touch-action: none !important;
+            -webkit-user-drag: none !important;
+            user-drag: none !important;
+            -webkit-user-select: none !important;
+            user-select: none !important;
+            -webkit-touch-callout: none !important;
         }
         body.reduce-effects .img-container img {
             transition: opacity 0.3s ease;
@@ -1440,6 +1466,13 @@
             object-fit: contain;
             opacity: 0;
             transition: opacity 0.3s ease;
+            pointer-events: none !important;
+            touch-action: none !important;
+            -webkit-user-drag: none !important;
+            user-drag: none !important;
+            -webkit-user-select: none !important;
+            user-select: none !important;
+            -webkit-touch-callout: none !important;
         }
         .item-modal-left .img-wrapper img.loaded {
             opacity: 1;
@@ -2335,6 +2368,13 @@
             display: block;
             opacity: 0;
             transition: opacity 0.4s ease;
+            pointer-events: none !important;
+            touch-action: none !important;
+            -webkit-user-drag: none !important;
+            user-drag: none !important;
+            -webkit-user-select: none !important;
+            user-select: none !important;
+            -webkit-touch-callout: none !important;
         }
         .profile-image-frame img.loaded {
             opacity: 1;
@@ -2570,12 +2610,12 @@
         .missing-icons-grid {
             display: grid;
             grid-template-columns: auto 1fr;
-            gap: 0;                     /* no gap, columns touch */
+            gap: 0;
             margin-top: 8px;
             border: 1px solid var(--border);
             border-radius: 6px;
             overflow: hidden;
-            font-size: 13px;            /* match report text size */
+            font-size: 13px;
         }
         .missing-icons-grid .grid-header {
             background: #2a2a2a;
@@ -2584,7 +2624,6 @@
             border-bottom: 2px solid var(--glow);
             text-align: left;
         }
-        /* Add vertical divider to header cells */
         .missing-icons-grid .grid-header:first-child {
             border-right: 1px solid #333;
         }
@@ -2599,7 +2638,6 @@
             align-items: center;
             min-height: 30px;
         }
-        /* Add vertical divider to ID cells (all rows) */
         .missing-icons-grid .grid-row .id-cell {
             border-right: 1px solid #333;
             justify-content: flex-start;
@@ -3009,6 +3047,11 @@
         body.reduce-effects .storage-bar-fill.danger {
             background: #D32F2F !important;
         }
+
+        /* Prevent context menu on images globally */
+        img {
+            -webkit-touch-callout: none !important;
+        }
     </style>
 </head>
 <body>
@@ -3084,58 +3127,9 @@
                     <option value="ORANGE_PLUS">🟠 MYTHIC++</option> <option value="RED">🟥 ARTIFACT</option>
                 </select>
 
+                <!-- TAG FILTER – dynamically populated from database -->
                 <select id="tagFilter">
                     <option value="">All Tags</option>
-                    <option value="OB54">OB54</option>
-                    <option value="OB53">OB53</option>
-                    <option value="OB52">OB52</option>
-                    <option value="OB51">OB51</option>
-                    <option value="OB50">OB50</option>
-                    <option value="OB49">OB49</option>
-                    <option value="OB48">OB48</option>
-                    <option value="OB47">OB47</option>
-                    <option value="OB46">OB46</option>
-                    <option value="OB45">OB45</option>
-                    <option value="OB44">OB44</option>
-                    <option value="OB43">OB43</option>
-                    <option value="OB42">OB42</option>
-                    <option value="OB41">OB41</option>
-                    <option value="OB40">OB40</option>
-                    <option value="OB39">OB39</option>
-                    <option value="OB38">OB38</option>
-                    <option value="OB37">OB37</option>
-                    <option value="OB36">OB36</option>
-                    <option value="OB35">OB35</option>
-                    <option value="OB34">OB34</option>
-                    <option value="OB33">OB33</option>
-                    <option value="OB32">OB32</option>
-                    <option value="OB31">OB31</option>
-                    <option value="OB30">OB30</option>
-                    <option value="OB29">OB29</option>
-                    <option value="OB28">OB28</option>
-                    <option value="OB27">OB27</option>
-                    <option value="OB26">OB26</option>
-                    <option value="OB25">OB25</option>
-                    <option value="OB24">OB24</option>
-                    <option value="OB23">OB23</option>
-                    <option value="OB22">OB22</option>
-                    <option value="OB21">OB21</option>
-                    <option value="OB20">OB20</option>
-                    <option value="OB19">OB19</option>
-                    <option value="OB18">OB18</option>
-                    <option value="OB17">OB17</option>
-                    <option value="OB16">OB16</option>
-                    <option value="OB15">OB15</option>
-                    <option value="OB14">OB14</option>
-                    <option value="OB13">OB13</option>
-                    <option value="OB10">OB10</option>
-                    <option value="OB09">OB09</option>
-                    <option value="OB08">OB08</option>
-                    <option value="OB07">OB07</option>
-                    <option value="OB06">OB06</option>
-                    <option value="OB05">OB05</option>
-                    <option value="OB02">OB02</option>
-                    <option value="OB01">OB01</option>
                 </select>
 
                 <!-- FAVORITES TOGGLE -->
@@ -3287,8 +3281,10 @@
                         <div class="settings-row">
                             <span class="settings-label">Download as</span>
                             <select id="downloadAs" class="select-small">
-                                <option value="id">&lt;id&gt;.png</option>
-                                <option value="name" selected>&lt;icon&gt;.png</option>
+                                <option value="icon.png" selected>&lt;icon&gt;.png</option>
+                                <option value="id.png">&lt;id&gt;.png</option>
+                                <option value="icon.webp">&lt;icon&gt;.webp</option>
+                                <option value="id.webp">&lt;id&gt;.webp</option>
                             </select>
                         </div>
 

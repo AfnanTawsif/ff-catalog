@@ -30,10 +30,10 @@ self.addEventListener('message', async (e) => {
                     decoded[0] !== null &&
                     (decoded[0].updated_on || decoded[0].version || decoded[0]._metadata)) {
                     updatedOn = decoded[0].updated_on || decoded[0].version || "Unknown";
-                    items = decoded.slice(1);
-                } else {
-                    items = decoded;
-                }
+                items = decoded.slice(1);
+                    } else {
+                        items = decoded;
+                    }
             } else if (typeof decoded === 'object' && decoded !== null) {
                 items = decoded.items || decoded.data || [];
                 updatedOn = decoded.updated_on || "Unknown";

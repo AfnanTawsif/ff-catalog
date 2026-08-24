@@ -1,5 +1,17 @@
 [
     {
+        "version": "v1.2.0",
+        "logs": [
+            "Switched item and fallback image sources to WebP for improved efficiency",
+            "Updated the 'Download as' setting to use the new image source and added additional format options",
+            "Images are now converted to PNG when copying or downloading, if enabled in settings",
+            "Future-proofed tag filters by loading them dynamically from the database, excluding the dummy 'OB90' tag",
+            "Renamed the database 'Rare' key to 'rarity' for consistency",
+            "Reset to page 1 whenever the active filter or search query changes",
+            "Disabled interaction on non-clickable site elements for a better touch experience"
+        ]
+    },
+    {
         "version": "v1.1.1",
         "logs": [
             "Fixed navigation gesture: ignores swipes on pagination bar",
