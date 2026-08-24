@@ -23,4 +23,4 @@ This project will use data and assets from the following sources (one or multipl
 
 ## 🔀 Merge & Processing
 
-Database data and images are merged, converted, and deduplicated using **FF Data Kit** by [@AfnanTAwsif](https://github.com/AfnanTAwsif).
+Database data and images are merged, converted, and deduplicated using **FF Data Kit** by [@AfnanTawsif](https://github.com/AfnanTawsif).
