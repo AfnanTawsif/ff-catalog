@@ -1,57 +1,49 @@
 # Welcome to Free Fire Catalog
 
-This is a quick guide to help you understand the WebApp.
+This is a quick guide to help you understand how to use the WebApp.
 
 # Must Check: Settings
 
+Click the [Gear icon](?settings=true) in the top-left corner to explore powerful features.
 <img: tutorial1.webp>
-
-Click the [Gear icon](?settings=true) on top left to explore powerful features.
 
 # Favorites Mode
 
+Click the star toggle beside the filters to switch between normal mode and favorites mode. You can click the star button on any item image to add it to your favorites. You can also import or export (backup) your favorites as a JSON file.
 <img: tutorial2.webp>
-
-Click the star toggle beside the filters to switch between normal mode and favorites mode. You can click star button on any item image to add that to favorites. You can also import or export (backup) favorites as json.
 
 # Shortcuts & Gestures
 
+Swipe left/right (or use the left/right arrow keys) to go to the previous or next page.
 <img: tutorial3.webp>
 
-Swipe left/right (or use left/right arrows) to go to previous or next page.
-
+Use Alt+S to trigger the "jump to page" action. You can also swipe the pagination slider or use the prev/next buttons to view more pages.
 <img: tutorial4.webp>
-
-Use Alt+S to trigger jump to page action. You can swipe the pagination slider or use the prev/next buttons to view more pages.
 
 # Copy Pills
 
+You can click the info pills in item details, database analysis, or diagnostic reports to copy their values.
 <img: tutorial5.webp>
-
-You can click the info pills in item details, database analysis or diagnostic report to cooy their values.
 
 # Manual Update
 
+You can force a manual update from Settings > App. 
+
+**Auto update:** The WebApp checks for new updates on every page reload, and the database checks for updates every 24 hours.
 <img: tutorial6.webp>
-
-You can force update manually from Settings > App.
-
-Auto update: WebApp checks for new update on every page reload & database checks for update every 24 hours.
 
 # Install App
 
+Click the 3-dot menu and select the Install button to access the WebApp faster and in full screen.
 <img: tutorial7.webp>
 
-Click 3 dots & select Install button to be able to access the WebApp faster & in full screen.
-
 # Need Help?
-
-<img: tutorial8.webp>
 
 Reach out via Settings > Contact 
 
 OR,
 
-Post issues in [GitHub repository](https://github.com/AfnanTawsif/ff-catalog).
+Post issues in the [GitHub repository](https://github.com/AfnanTawsif/ff-catalog).
+<img: tutorial8.webp>
 
 Enjoy using the catalog ❤️
