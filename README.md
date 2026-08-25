@@ -70,6 +70,10 @@ The app checks for a new database every 24 hours, and you can force a sync anyti
 **📱 PWA & Shareable**
   - Installable as a Progressive Web App on mobile devices.
   - Each item has a unique URL (`?item=ID`) – share any item directly.
+    
+**🧑‍💻 Support for Users**
+  - Comprehensive tutorial for new users.
+  - Technical support via socials.
 
 **🛠️ Developer Friendly**
   - Exposed API for fetching item icons (see below).
@@ -151,16 +155,22 @@ ff-catalog/
 │   │   └── icons/                   # App icons (SVG, PNG)
 │   └── Online/                      # Dynamic files loaded via CDN
 │       ├── whats_new.json           # Changelog for WebApp
+│       ├── hayato.webp              # hayato flash image for tutorial
+│       ├── tutorial.md              # Loads in tutorial menu
+│       ├── tutorial<number>.webp    # Images used inside tutorial.md
 │       └── author.jpg               # Author avatar
-├── Item-webp/                             # All item icons (WEBP, named by item ID)
+├── Item-webp/                       # All item icons (WEBP, named by item ID)
 ├── database.msgpack.gz               # Compressed database
 ├── README.md                         # This file
+├── SOURCES.md                        # Sources & Credits for database & icons
 └── LICENSE                           # MIT License
 ```
 
 ### 4. Configuration – `script.js`
 
-All external URLs and author info are centralized in the `CONFIG` object at the top of `script.js`:
+All external URLs and author info are centralized in the `CONFIG` object at the top of `script.js`.
+
+Example:
 
 ```js
 const CONFIG = {
@@ -234,13 +244,19 @@ Update `WebApp/Online/whats_new.json` with the new version and changes.
 
 Then purge the jsDelivr cache for `whats_new.json`.
 
-### 8. Updating Author Image (optional)
+### 8. Updating Author Image
 
 Replace `WebApp/Online/author.jpg` with your own picture.
 
 Purge the CDN cache after updating. Note that author image is cached for 24 hours (just like database) to save bandwidth.
 
-### 9. Deploy
+### 11. Updating Tutorial
+
+Update `WebApp/Online/tutorial.md` and purge the cache.
+
+Note that tutorial.md tries to load from online first (just like `what's_new json`) then falls back to cache. But images used inside tutorial.md use cache first loading and cdn is kept as fallback. So if you want to update the images inside it, you must use new names to make sure all browsers load the fresh image from online. 
+
+### 10. Deploy
 
 Commit and push to your repository.
 
@@ -248,7 +264,7 @@ If using Netlify, connect your repo and set the publish directory to `WebApp/App
 
 The app will be live at your Netlify URL.
 
-### 10. Auto-Update Behavior
+### 11. Auto-Update Behavior
 
 The WebApp checks for a new Service Worker version on every page reload. If a new `sw.js` is detected, it updates in the background and shows the changelog.
 
