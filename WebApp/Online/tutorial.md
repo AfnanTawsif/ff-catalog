@@ -37,6 +37,11 @@ You can force a manual update from Settings > App.
 Click the 3-dot menu and select the Install button to access the WebApp faster and in full screen.
 <img: tutorial7.webp>
 
+# Re-visit Tutorial
+
+You can always re-visit tutorial from Settings > General
+<img: tutorial9.webp>
+
 # Need Help?
 
 Reach out via Settings > Contact 
@@ -46,6 +51,7 @@ OR,
 
 Post issues in the [GitHub repository](https://github.com/AfnanTawsif/ff-catalog).
 
-
+<br>
+<br>
 Enjoy using the catalog ❤️ 
 Don't forget to give a ⭐ on Github
