@@ -62,4 +62,4 @@ Post issues in the [GitHub repository](https://github.com/AfnanTawsif/ff-catalog
 <br>
 ------------------
 Enjoy using the catalog ❤️ 
-Don't forget to give a ⭐ on Github
+Don't forget to give a ⭐ on Github!
