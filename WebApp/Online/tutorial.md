@@ -48,4 +48,5 @@ OR,
 Post issues in the [GitHub repository](https://github.com/AfnanTawsif/ff-catalog).
 
 
-Enjoy using the catalog ❤️ Don't forget to give a ⭐ on github.
+Enjoy using the catalog ❤️ 
+Don't forget to give a ⭐ on Github
