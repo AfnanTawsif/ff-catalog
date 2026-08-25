@@ -1,3 +1,4 @@
+tutorial_images_version=1.0.0
 # Welcome to Free Fire Catalog
 
 This is a quick guide to help you understand how to use the WebApp.
