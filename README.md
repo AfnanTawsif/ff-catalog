@@ -152,7 +152,7 @@ ff-catalog/
 │   │   ├── manifest.json
 │   │   ├── robots.txt
 │   │   ├── sitemap.xml
-│   │   └── icons/                   # App icons (SVG, PNG)
+│   │   └── icons/                   # App icons (SVG, PNG, WEBP)
 │   └── Online/                      # Dynamic files loaded via CDN
 │       ├── whats_new.json           # Changelog for WebApp
 │       ├── hayato.webp              # hayato flash image for tutorial
