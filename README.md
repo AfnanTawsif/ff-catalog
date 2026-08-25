@@ -250,11 +250,13 @@ Replace `WebApp/Online/author.jpg` with your own picture.
 
 Purge the CDN cache after updating. Note that author image is cached for 24 hours (just like database) to save bandwidth.
 
-### 11. Updating Tutorial
+### 9. Updating Tutorial
 
 Update `WebApp/Online/tutorial.md` and purge the cache.
 
 Note that tutorial.md tries to load from online first (just like `what's_new json`) then falls back to cache. But images used inside tutorial.md use cache first loading and cdn is kept as fallback. So if you want to update the images inside it, you must use new names to make sure all browsers load the fresh image from online. 
+
+Images are edited in picsart (Eczar Regular font)and converted using [this tool](https://picflow.com/convert/jpg-to-webp) with 80% quality.
 
 ### 10. Deploy
 
