@@ -2,7 +2,7 @@
 
 This is a quick guide to help you get started.
 
-## Features
+# Features
 
 - Search items by name, ID, description, or icon.
 - Filter by type, rarity, and tags.
@@ -15,7 +15,7 @@ Here is an example of the search bar:
 
 You can also export your favorites list.
 
-## Settings
+# Settings
 
 Adjust your preferences in the Settings menu.
 
