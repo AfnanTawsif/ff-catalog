@@ -1,33 +1,53 @@
 # Welcome to Free Fire Catalog
 
-This is a quick guide to help you get started with the catalog.
+This is a quick guide to help you understand the WebApp.
 
-# Features
-
-- Search items by name, ID, description, or icon.
-- Filter by type, rarity, and tags.
-- Mark items as favorites.
-- Export/import your favorites list.
+# Must Check: Settings!
 
 <img: tutorial1.webp>
 
-Here is an example of the search bar and filters.
+Click the [Gear icon](?settings=true) on top left to explore powerful settings.
 
-# Settings
+# Favorites Mode
 
-Adjust your preferences in the [Settings menu](?settings=true) (open by clicking the gear icon).
+<img: tutorial2.webp>
 
-- Change search range (name, ID, description, icon).
-- Choose click action (view details, copy ID, copy icon, download).
-- Adjust download format.
-- Reduce visual effects for performance.
+Click the star toggle beside the filters to switch between normal mode and favorites mode.
 
-# Icon Storage
+# Shortcuts & Gestures
 
-The catalog caches icons locally. You can set a storage limit and clean the cache manually.
+Swipe left or right (or use left/right arrow) to go to previous or next page.
+
+<img: tutorial3.webp>
+
+Use Alt+S to trigger jump to page action. You can swipe the pagination slider or use the arrow buttons to view more pages.
+
+# Copy pills
+
+<img: tutorial4.webp>
+
+You can click the info pills in item details, database analysis or diagnostic report to cooy their values.
+
+# Update Mechanism 
+
+WebApp checks for new update on every page reload & database checks for update evry 24 hours.
+
+<img: tutorial5.webp>
+
+You can force update from Settings > App.
+
+# Install App
+
+<img: tutorial6.webp>
+
+Click 3 dots $ select Install button to access the WebApp faster.
 
 # Need Help?
 
-Check the [GitHub repository](https://github.com/AfnanTawsif/ff-catalog) for updates and issues.
+Reach out via Settings > Contact 
 
-That's it! Enjoy using the catalog.
+OR,
+
+CPost issues in [GitHub repository](https://github.com/AfnanTawsif/ff-catalog).
+
+Enjoy using the catalog ❤️
