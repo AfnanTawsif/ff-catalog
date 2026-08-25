@@ -15,7 +15,7 @@ Here is an example of the search bar and filters.
 
 # Settings
 
-Adjust your preferences in the [Settings menu](#) (open by clicking the gear icon).
+Adjust your preferences in the [Settings menu](?settings=true) (open by clicking the gear icon).
 
 - Change search range (name, ID, description, icon).
 - Choose click action (view details, copy ID, copy icon, download).
