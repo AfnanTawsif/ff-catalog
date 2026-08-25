@@ -12,7 +12,6 @@ This is a quick guide to help you get started.
 
 Here is an example of the search bar:
 
-<img: tutorial2.webp>
 
 You can also export your favorites list.
 
@@ -20,6 +19,5 @@ You can also export your favorites list.
 
 Adjust your preferences in the Settings menu.
 
-<img: tutorial3.webp>
 
 That's it! Enjoy using the catalog.
