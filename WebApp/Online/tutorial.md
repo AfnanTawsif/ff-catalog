@@ -30,7 +30,7 @@ Use Alt+S to trigger jump to page action. You can swipe the pagination slider or
 
 You can click the info pills in item details, database analysis or diagnostic report to cooy their values.
 
-# Update Mechanism 
+# Manual Update
 
 <img: tutorial6.webp>
 
