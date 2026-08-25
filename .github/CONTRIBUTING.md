@@ -76,19 +76,22 @@ Additional fields are allowed.
 ### Project structure
 
 ```
-WebApp/
-├── App/                    # Web application files
-│   ├── index.html
-│   ├── script.js
-│   ├── sw.js
-│   ├── db-worker.js
-│   ├── manifest.json
-│   ├── robots.txt
-│   ├── sitemap.xml
-│   └── icons/              # App icons (SVG, PNG)
-└── Online/                 # Dynamic files loaded via CDN
-    ├── whats_new.json      # Changelog for WebApp
-    └── author.jpg          # Author avatar
+├── WebApp/
+│   ├── App/                         # Web application files
+│   │   ├── index.html
+│   │   ├── script.js
+│   │   ├── sw.js
+│   │   ├── db-worker.js
+│   │   ├── manifest.json
+│   │   ├── robots.txt
+│   │   ├── sitemap.xml
+│   │   └── icons/                   # App icons (SVG, PNG, WEBP)
+│   └── Online/                      # Dynamic files loaded via CDN
+│       ├── whats_new.json           # Changelog for WebApp
+│       ├── hayato.webp              # hayato flash image for tutorial
+│       ├── tutorial.md              # Loads in tutorial menu
+│       ├── tutorial<number>.webp    # Images used inside tutorial.md
+│       └── author.jpg               # Author avatar
 ```
 
 ### Code style
