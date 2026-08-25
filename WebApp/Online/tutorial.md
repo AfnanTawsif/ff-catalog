@@ -24,7 +24,7 @@ Swipe left/right (or use left/right arrows) to go to previous or next page.
 
 Use Alt+S to trigger jump to page action. You can swipe the pagination slider or use the prev/next buttons to view more pages.
 
-# Copy pills
+# Copy Pills
 
 <img: tutorial5.webp>
 
