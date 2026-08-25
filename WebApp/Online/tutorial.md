@@ -18,7 +18,7 @@ Click the star toggle beside the filters to switch between normal mode and favor
 Swipe left/right (or use the left/right arrow keys) to go to the previous or next page.
 <img: tutorial3.webp>
 
-Use Alt+S to trigger the "jump to page" action. You can also swipe the pagination slider or use the prev/next buttons to view more pages.
+Use Alt+S to trigger the **jump to page** action. You can also swipe the pagination slider or use the prev/next buttons to view more pages.
 <img: tutorial4.webp>
 
 # Copy Pills
@@ -41,10 +41,11 @@ Click the 3-dot menu and select the Install button to access the WebApp faster a
 # Need Help?
 
 Reach out via Settings > Contact 
+<img: tutorial8.webp>
 
 OR,
 
 Post issues in the [GitHub repository](https://github.com/AfnanTawsif/ff-catalog).
-<img: tutorial8.webp>
 
-Enjoy using the catalog ❤️
+
+Enjoy using the catalog ❤️ Don't forget to give a ⭐ on github.
