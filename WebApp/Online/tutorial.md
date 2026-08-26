@@ -9,8 +9,11 @@ Click the [Gear icon](?settings=true) in the top-left corner to explore powerful
 
 # Favorites Mode
 
-Click the star toggle beside the filters to switch between **normal mode** and **favorites mode**. You can click the **star button** on any item image to add it to your favorites. You can also import or export (backup) your favorites as a JSON file.
+Click the star toggle beside the filters to switch between **normal mode** and **favorites mode**. 
 <img: tutorial2.webp>
+
+You can click the **star button** on any item image to add it to your favorites. You can also import or export (backup) your favorites as a JSON file.
+<img: tutorial10.webp>
 
 # Shortcuts & Gestures
 
