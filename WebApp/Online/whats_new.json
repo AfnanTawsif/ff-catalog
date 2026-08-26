@@ -1,16 +1,27 @@
 [
     {
+        "version": "v1.3.1",
+        "logs": [
+            "Added 'Items per page' option to Settings",
+            "Added an info button and image for Performance mode",
+            "The main header now displays the number of items shown and the current display mode",
+            "Fixed unexpected auto-scrolling when changing the search query or filters",
+            "Improved network reliability: statically.io is now used as a fallback for all jsDelivr errors, with increased image-loading timeouts and improved error detection based on jsDelivr attempts",
+            "Various UI/UX refinements and improvements"
+        ]
+    },
+    {
         "version": "v1.3.0",
         "logs": [
-            "Added a dedicated comprehensive guide (Hayato's tutorial) with cache support and a trigger button in the settings menu",
-            "Added an additional close button to menu footers for one-handed navigation",
-            "Fixed error images to load correctly based on their error status",
-            "Uses the cached web app version code when fetching sw.js fails (e.g., in offline mode)",
-            "Diagnostic report now detects missing filters case-insensitively",
-            "Added a scroll-down indicator to the settings menu",
-            "Removed the target animation state toward the settings button as we migrated to the new tutorial logic",
-            "'Reduce visual effects' is now called 'Performance mode'",
-            "UI/UX enhancements for Performance mode"
+            "Added a dedicated comprehensive guide (Hayato's Tutorial) with cache support and a trigger button in the Settings menu",
+            "Added an additional close button to menu footers for easier one-handed navigation",
+            "Fixed error images not loading correctly according to their error status",
+            "The cached web app version is now used when fetching sw.js fails (e.g., while offline)",
+            "Diagnostic reports now detect missing filters case-insensitively",
+            "Added a scroll-down indicator to the Settings menu",
+            "Removed the target animation toward the Settings button after migrating to the new tutorial logic",
+            "Renamed 'Reduce visual effects' to 'Performance mode'",
+            "Improved the UI/UX of Performance mode"
         ]
     },
     {
@@ -20,18 +31,18 @@
             "Added statically.io as a fallback CDN for 403 errors caused by jsDelivr rate limits",
             "Filter values are now case-insensitive",
             "Redesigned the changelog UI and added pagination-based lazy loading",
-            "Moved fetching and decompression from the db-worker to the main thread, leaving the worker responsible only for parsing and making caching errors easier to handle",
+            "Moved fetching and decompression from the DB worker to the main thread, leaving the worker responsible only for parsing and making caching errors easier to handle",
             "Improved consistency in Reduced Visual Effects mode and increased timeouts for changelog and author image fetching"
         ]
     },
     {
         "version": "v1.2.1",
         "logs": [
-            "Added new type filter 'Pyro Pets'",
-            "'Rarity' is no longer treated as primary tag in database info",
-            "Added icons for network error and 403 status along with retry buttons",
-            "Fixed download button: saves exactly the shown item icon or error image",
-            "Tag filter ignores dummy OB90 & higher"
+            "Added the new 'Pyro Pets' type filter",
+            "'Rarity' is no longer treated as a primary tag in database information",
+            "Added icons for network errors and 403 status, along with retry buttons",
+            "Fixed the download button to save exactly the displayed item icon or error image",
+            "The tag filter now ignores the dummy OB90 and higher tags"
         ]
     },
     {
@@ -39,50 +50,50 @@
         "logs": [
             "Switched item and fallback image sources to WebP for improved efficiency",
             "Updated the 'Download as' setting to use the new image source and added additional format options",
-            "Images are now converted to PNG when copying or downloading, if enabled in settings",
+            "Images are now converted to PNG when copying or downloading, if enabled in Settings",
             "Future-proofed tag filters by loading them dynamically from the database, excluding the dummy 'OB90' tag",
             "Renamed the database 'Rare' key to 'rarity' for consistency",
             "Reset to page 1 whenever the active filter or search query changes",
-            "Disabled interaction on non-clickable site elements for a better touch experience"
+            "Disabled interaction with non-clickable site elements for a better touch experience"
         ]
     },
     {
         "version": "v1.1.1",
         "logs": [
-            "Fixed navigation gesture: ignores swipes on pagination bar",
-            "Missing icons report: enhanced analysis report + added cache support"
+            "Fixed navigation gestures to ignore swipes on the pagination bar",
+            "Enhanced the missing icons diagnostic report and added cache support"
         ]
     },
     {
         "version": "v1.1.0 (Hotfix)",
         "logs": [
-            "(+): ADDED 'Reduce visual effects' option for a snappier experience on older devices",
-            "(+): ADDED swipe gestures and left/right arrow shortcuts for switching to the previous/next page",
-            "(+): ADDED Alt+S shortcut to trigger the 'Jump to page' input box",
-            "(+): ADDED animations between page switching",
-            "(+): ADDED duplicate item detection to database info + improved section ordering inside the corresponding menu",
-            "Fixed items getting stuck on loading",
-            "(-): REMOVED infinite scroll mode due to performance issues",
+            "Added a 'Reduce visual effects' option for a snappier experience on older devices",
+            "Added swipe gestures and left/right arrow shortcuts for switching to the previous or next page",
+            "Added the Alt+S shortcut to trigger the 'Jump to page' input box",
+            "Added animations when switching between pages",
+            "Added duplicate item detection to database information and improved section ordering in the corresponding menu",
+            "Fixed items getting stuck in the loading state",
+            "Removed infinite scroll mode due to performance issues",
             "Refactored lazy-loading logic to be based on the current page instead of the viewport",
-            "Fixed fake icon storage usage bug when loaded from cache",
-            "Fixed 'Download database as JSON' option to include the updated_on string",
-            "Reset scroll progress upon switching settings tabs",
-            "Optimized the icon-loading mechanism in the grid and full details menus for more consistent behavior",
-            "Fixed star button's grayish fill color bug",
-            "Reduced the maximum width of the full details menu"
+            "Fixed a fake icon storage usage bug when loading from cache",
+            "Fixed the 'Download database as JSON' option to include the updated_on string",
+            "Reset scroll progress when switching between Settings tabs",
+            "Optimized the icon-loading mechanism in the grid and Full Details menus for more consistent behavior",
+            "Fixed a bug causing the star button to have a grayish fill color",
+            "Reduced the maximum width of the Full Details menu"
         ]
     },
     {
         "version": "v1.0.4",
         "logs": [
-            "Share: Added banner for scrapers"
+            "Share: Added a banner for scrapers"
         ]
     },
     {
         "version": "v1.0.3",
         "logs": [
-            "UI/UX: Added decorative bar in details menu",
-            "Java: Better tutorial & changelogs behavior" 
+            "UI/UX: Added a decorative bar to the Details menu",
+            "Java: Improved tutorial and changelog behavior"
         ]
     },
     {
@@ -94,25 +105,25 @@
     {
         "version": "v1.0.1",
         "logs": [
-            "Added missing OB tag filters (OB01–OB25, OB27–OB54, excluding OB90)",
-            "Favorites toolbar now uses inline-flex and fit‑content width",
-            "Fixed modal image cleanup to avoid alt‑text flicker on close",
-            "Slightly darkened settings gear icon",
-            "Updated GitHub repository links and CDN paths to ff‑catalog"
+            "Added missing OB tag filters (OB01–OB25 and OB27–OB54, excluding OB90)",
+            "The Favorites toolbar now uses inline-flex with a fit-content width",
+            "Fixed modal image cleanup to prevent alt-text flickering when closing",
+            "Slightly darkened the Settings gear icon",
+            "Updated GitHub repository links and CDN paths to ff-catalog"
         ]
     },
     {
         "version": "v1.0.0",
         "logs": [
             "Initial release after extensive internal testing and refinement",
-            "Full inventory database with 50+ item types",
-            "Advanced search by name, ID, description, or icon",
-            "Filter by type, rarity, and tag",
-            "Favorites system with import/export",
-            "Two display modes: pagination and infinite scroll",
-            "Item details modal with copy, download, and share",
-            "PWA support with offline caching",
-            "Customizable settings and dark theme"
+            "Added a full inventory database with 50+ item types",
+            "Added advanced search by name, ID, description, or icon",
+            "Added filtering by type, rarity, and tag",
+            "Added a Favorites system with import/export support",
+            "Added two display modes: pagination and infinite scroll",
+            "Added an item details modal with copy, download, and share options",
+            "Added PWA support with offline caching",
+            "Added customizable settings and a dark theme"
         ]
     }
 ]
