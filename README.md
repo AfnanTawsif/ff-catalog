@@ -26,7 +26,7 @@ The app checks for a new database every 24 hours, and you can force a sync anyti
 ## 🚀 WebApp Overview
 
 **🏎️ Blazing Performance**
-  - 'Reduce visual effects' option for best performance on weak devices.
+  - 'Performance mode' option for best performance (less visual effects) on weak devices.
   - Uses WEBP instead of PNG for faster loads.
   - Uses msgpack instead of json for maximum reading speed.
   - Lazy-loads images & animations only for items on current page.
