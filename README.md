@@ -158,6 +158,7 @@ ff-catalog/
 │       ├── hayato.webp              # hayato flash image for tutorial
 │       ├── tutorial.md              # Loads in tutorial menu
 │       ├── tutorial<number>.webp    # Images used inside tutorial.md
+│       ├── performance-mode.webp    # Info image for performance mode
 │       └── author.jpg               # Author avatar
 ├── Item-webp/                       # All item icons (WEBP, named by item ID)
 ├── database.msgpack.gz               # Compressed database
