@@ -47,7 +47,15 @@ const CONFIG = {
         instagram: 'https://www.instagram.com/_hey_tawsif_',
         email: 'mailto:acer.only2001@gmail.com',
         devName: 'AfnanTawsif'
-    }
+    },
+
+    // NEW for Tutorial
+    ONLINE_BASE_URL: 'https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/WebApp/Online/',
+    FALLBACK_ONLINE_BASE_URL: 'https://cdn.statically.io/gh/AfnanTawsif/ff-catalog@main/WebApp/Online/',
+    TUTORIAL_MD_URL: 'https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/WebApp/Online/tutorial.md',
+    FALLBACK_TUTORIAL_MD_URL: 'https://cdn.statically.io/gh/AfnanTawsif/ff-catalog@main/WebApp/Online/tutorial.md',
+    HAYATO_IMAGE_URL: 'https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/WebApp/Online/hayato.webp',
+    FALLBACK_HAYATO_IMAGE_URL: 'https://cdn.statically.io/gh/AfnanTawsif/ff-catalog@main/WebApp/Online/hayato.webp',
 };
 
 // ================================================================
@@ -59,15 +67,16 @@ const CONFIG = {
 // --------------------------------------------------------------
 function getFallbackUrl(err) {
     const status = (typeof err === 'number') ? err : (err.status || 0);
+    
+    // Specific status codes
     if (status === 403) {
         return CONFIG.ERROR_403_IMAGE_URL;
     }
-    if (err && err.message && err.message.includes('403')) {
-        return CONFIG.ERROR_403_IMAGE_URL;
-    }
-    if (status === 0 || (err && err.message && (err.message.includes('NetworkError') || err.message.toLowerCase().includes('network')))) {
+    if (status === 0) {
+        // Network error, aborted request, or timeout
         return CONFIG.NETWORK_ERROR_IMAGE_URL;
     }
+    // All other statuses (404, 500, etc.) → generic fallback
     return CONFIG.FALLBACK_IMAGE_URL;
 }
 
@@ -113,12 +122,6 @@ async function fetchWithFallback(primaryUrl, fallbackUrl, options = {}) {
 }
 
 // --------------------------------------------------------------
-//  SETTINGS BUBBLE TUTORIAL FLAG (persistent via localStorage)
-// --------------------------------------------------------------
-let tutorialSettingsBubbleDismissed = localStorage.getItem('tutorial_settings_bubble_dismissed') === 'true';
-let settingsBubbleShown = false;
-
-// --------------------------------------------------------------
 //  SETTINGS TAB LOGIC
 // --------------------------------------------------------------
 const tabBtns = document.querySelectorAll('.tab-btn');
@@ -138,6 +141,9 @@ tabBtns.forEach(btn => {
         if (btn.dataset.tab === 'contact') {
             loadAuthorImageWithCache();
         }
+
+        // Update scroll indicator after tab switch
+        setTimeout(updateSettingsScrollDown, 50);
     });
 });
 
@@ -150,6 +156,9 @@ let versionResolve = null;
 const versionPromise = new Promise(resolve => { versionResolve = resolve; });
 
 const WEBSITE_URL = CONFIG.WEBSITE_URL || (window.location.origin + window.location.pathname).replace(/\/+$/, '');
+
+// localStorage key for caching the WebApp version
+const WEBAPP_VERSION_STORAGE_KEY = 'ff_webapp_version';
 
 document.getElementById('sourceCodeLink').href = CONFIG.GITHUB_REPO_URL;
 
@@ -168,13 +177,16 @@ let isUpdateReload = false;
 
 // --------------------------------------------------------------
 //  FETCH SERVICE WORKER VERSION (returns a promise)
+//  – Now falls back to localStorage cache if network fails
 // --------------------------------------------------------------
 async function fetchSWVersion() {
+    let version = null;
+    let fromCache = false;
+
     try {
         const res = await fetch('sw.js?nocache=' + Date.now());
         if (!res.ok) throw new Error('Network error');
         const text = await res.text();
-        let version = null;
         const patterns = [
             /CACHE_NAME\s*=\s*['"][^'"]*-(v[\d\.]+)['"]/,
             /version\s*[:=]\s*['"](v[\d\.]+)['"]/,
@@ -188,19 +200,44 @@ async function fetchSWVersion() {
             }
         }
         if (version) {
-            WEBAPP_VERSION = version;
+            // Save to localStorage
+            localStorage.setItem(WEBAPP_VERSION_STORAGE_KEY, version);
         } else {
             console.warn('Could not extract version from sw.js');
+            // Try cache
+            const cached = localStorage.getItem(WEBAPP_VERSION_STORAGE_KEY);
+            if (cached) {
+                version = cached;
+                fromCache = true;
+            }
         }
     } catch (e) {
         console.error("Could not fetch SW version", e);
+        const cached = localStorage.getItem(WEBAPP_VERSION_STORAGE_KEY);
+        if (cached) {
+            version = cached;
+            fromCache = true;
+        }
+    }
+
+    if (version) {
+        WEBAPP_VERSION = version;
+        if (fromCache) {
+            // Show toast after a short delay (UI ready)
+            setTimeout(() => {
+                showToast(`Using cached WebApp version: ${WEBAPP_VERSION}`);
+            }, 800);
+        }
+    } else {
+        WEBAPP_VERSION = 'Unknown';
     }
 
     document.getElementById('webappVersionUI').textContent = WEBAPP_VERSION;
     if (versionResolve) versionResolve(WEBAPP_VERSION);
     return WEBAPP_VERSION;
 }
-fetchSWVersion();
+
+// No longer call fetchSWVersion() here; it will be called in DOMContentLoaded
 
 // --------------------------------------------------------------
 //  SERVICE WORKER REGISTRATION (with update detection)
@@ -510,6 +547,12 @@ async function showWhatsNew(tutorial = false) {
     const reportTitle = document.getElementById('reportTitle');
     const reportContent = document.getElementById('reportContent');
 
+    // Remove any mode classes and set whatsnew-mode
+    if (reportContent) {
+        reportContent.classList.remove('tutorial-mode', 'whatsnew-mode');
+        reportContent.classList.add('whatsnew-mode');
+    }
+
     if (!reportTitle || !reportContent) {
         console.warn('Report modal elements not found');
         return;
@@ -682,28 +725,6 @@ function renderPaginationBar() {
     if (prevBtn) prevBtn.addEventListener('click', () => goToPage(current - 1));
     if (nextBtn) nextBtn.addEventListener('click', () => goToPage(current + 1));
     if (closeBtn) closeBtn.addEventListener('click', () => closeModal('reportModal'));
-}
-
-// --------------------------------------------------------------
-//  SETTINGS BUBBLE (tutorial) CONTROL
-// --------------------------------------------------------------
-function showSettingsBubbleIfNeeded() {
-    if (tutorialSettingsBubbleDismissed || settingsBubbleShown) return;
-    settingsBubbleShown = true;
-    const settingsBtn = document.getElementById('openSettings');
-    const settingsBubble = document.getElementById('settingsBubble');
-    settingsBtn.classList.add('pulse-inward');
-    settingsBubble.classList.add('show');
-}
-
-function dismissSettingsBubble() {
-    tutorialSettingsBubbleDismissed = true;
-    localStorage.setItem('tutorial_settings_bubble_dismissed', 'true');
-    const settingsBtn = document.getElementById('openSettings');
-    const settingsBubble = document.getElementById('settingsBubble');
-    settingsBtn.classList.remove('pulse-inward');
-    settingsBubble.classList.remove('show');
-    settingsBubbleShown = false;
 }
 
 // --------------------------------------------------------------
@@ -881,6 +902,9 @@ function openModal(id, data = null) {
     document.body.style.overflow = 'hidden';
     activeModalStack.push(id);
 
+    // Cancel any pending auto-show timer (user is interacting with a modal)
+    scheduleTutorialAutoShow();
+
     if (id === 'itemModal' && data && data.itemId) {
         currentItemModalId = data.itemId;
     }
@@ -890,6 +914,15 @@ function openModal(id, data = null) {
             const iconNameEl = document.getElementById('modalIconName');
             if (iconNameEl) adjustIconNameOverflow(iconNameEl);
         }, 50);
+    }
+
+    // Attach scroll listener for settings modal
+    if (id === 'settingsModal') {
+        const body = document.querySelector('.settings-body');
+        if (body) {
+            body.addEventListener('scroll', updateSettingsScrollDown);
+            setTimeout(updateSettingsScrollDown, 100);
+        }
     }
 
     updateUrlFromStack('push');
@@ -905,6 +938,8 @@ function closeModal(id, isPopState = false) {
     updateUrlFromStack('replace');
     if (activeModalStack.length === 0) {
         document.body.style.overflow = '';
+        // Start the 2-second countdown now that no modals are open
+        scheduleTutorialAutoShow();
     }
 }
 
@@ -916,6 +951,16 @@ function forceHideModal(id) {
             whatsNewCurrentPage = 1;
             const footer = document.getElementById('reportFooter');
             if (footer) footer.innerHTML = '';
+            const content = document.getElementById('reportContent');
+            if (content) {
+                content.classList.remove('tutorial-mode', 'whatsnew-mode');
+            }
+        }
+        if (id === 'settingsModal') {
+            const body = document.querySelector('.settings-body');
+            if (body) {
+                body.removeEventListener('scroll', updateSettingsScrollDown);
+            }
         }
         modal.classList.add('hidden');
         const index = activeModalStack.indexOf(id);
@@ -1440,9 +1485,6 @@ mainTitle.addEventListener('click', goHome);
 //  SETTINGS BUTTON
 // --------------------------------------------------------------
 document.getElementById('openSettings').addEventListener('click', () => {
-    if (settingsBubbleShown) {
-        dismissSettingsBubble();
-    }
     if (activeModalStack.includes('settingsModal')) {
         const modal = document.getElementById('settingsModal');
         if (modal) modal.classList.remove('hidden');
@@ -1600,7 +1642,7 @@ document.getElementById('reportContent').addEventListener('click', (e) => {
 });
 
 // --------------------------------------------------------------
-//  SUMMARIZE DATABASE
+//  SUMMARIZE DATABASE  (UPDATED with footer close button)
 // --------------------------------------------------------------
 document.getElementById('summarizeBtn').addEventListener('click', () => {
     if (!allItems.length) return;
@@ -1671,8 +1713,14 @@ document.getElementById('summarizeBtn').addEventListener('click', () => {
     });
     reportHTML += `</div>`;
 
-    document.getElementById('reportTitle').textContent = "Database info";
+    document.getElementById('reportTitle').textContent = "Database Info";
     document.getElementById('reportContent').innerHTML = reportHTML;
+    // Remove whatsnew-mode for diagnostic reports
+    document.getElementById('reportContent').classList.remove('whatsnew-mode', 'tutorial-mode');
+
+    // Add close button to footer
+    document.getElementById('reportFooter').innerHTML = `<button class="whatsnew-close-btn" onclick="closeModal('reportModal')" style="background: var(--glow); border: none; color: #fff; padding: 6px 18px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(168, 66, 255, 0.4);">CLOSE</button>`;
+
     const modal = document.getElementById('reportModal');
     if (modal) {
         modal.classList.remove('hidden');
@@ -1715,7 +1763,7 @@ function loadMissingIconsCache() {
 }
 
 // --------------------------------------------------------------
-//  FIND MISSING FILTERS & ICONS  (UPDATED with caching)
+//  FIND MISSING FILTERS & ICONS  (UPDATED with caching and footer close button)
 // --------------------------------------------------------------
 document.getElementById('findFiltersBtn').addEventListener('click', async () => {
     if (!allItems.length) return;
@@ -1737,13 +1785,13 @@ document.getElementById('findFiltersBtn').addEventListener('click', async () => 
             if (item.rarity) dbRares.add(item.rarity);
         });
 
-            const htmlTags = Array.from(document.querySelectorAll('#tagFilter option')).map(o => o.value).filter(v => v);
-            const htmlTypes = Array.from(document.querySelectorAll('#typeFilter option:not([disabled])')).map(o => o.value).filter(v => v);
-            const htmlRares = Array.from(document.querySelectorAll('#rareFilter option:not([disabled])')).map(o => o.value).filter(v => v);
+            const htmlTags = Array.from(document.querySelectorAll('#tagFilter option')).map(o => o.value.toLowerCase()).filter(v => v);
+            const htmlTypes = Array.from(document.querySelectorAll('#typeFilter option:not([disabled])')).map(o => o.value.toLowerCase()).filter(v => v);
+            const htmlRares = Array.from(document.querySelectorAll('#rareFilter option:not([disabled])')).map(o => o.value.toLowerCase()).filter(v => v);
 
-            const missingTags = Array.from(dbTags).filter(t => !htmlTags.includes(t));
-            const missingTypes = Array.from(dbTypes).filter(t => !htmlTypes.includes(t));
-            const missingRares = Array.from(dbRares).filter(r => !htmlRares.includes(r));
+            const missingTags = Array.from(dbTags).filter(t => !htmlTags.includes(t.toLowerCase()));
+            const missingTypes = Array.from(dbTypes).filter(t => !htmlTypes.includes(t.toLowerCase()));
+            const missingRares = Array.from(dbRares).filter(r => !htmlRares.includes(r.toLowerCase()));
 
             let missingIconIds = [];
             let iconCheckError = null;
@@ -1878,6 +1926,12 @@ document.getElementById('findFiltersBtn').addEventListener('click', async () => 
 
             document.getElementById('reportTitle').textContent = "Diagnostic Report";
             document.getElementById('reportContent').innerHTML = reportHTML;
+            // Remove whatsnew-mode for diagnostic reports
+            document.getElementById('reportContent').classList.remove('whatsnew-mode', 'tutorial-mode');
+
+            // Add close button to footer
+            document.getElementById('reportFooter').innerHTML = `<button class="whatsnew-close-btn" onclick="closeModal('reportModal')" style="background: var(--glow); border: none; color: #fff; padding: 6px 18px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(168, 66, 255, 0.4);">CLOSE</button>`;
+
             const modal = document.getElementById('reportModal');
             if (modal) {
                 modal.classList.remove('hidden');
@@ -2511,7 +2565,8 @@ async function initDatabase(forceSync = false) {
                 localStorage.setItem('ff_visited', 'true');
                 setTimeout(() => showWhatsNew(true), 500);
             }
-            setTimeout(() => showSettingsBubbleIfNeeded(), 1000);
+            // Schedule auto tutorial (will show after 2 seconds if conditions are met)
+            scheduleTutorialAutoShow();
         }
 
         syncModalsFromUrl();
@@ -2611,7 +2666,8 @@ async function initDatabase(forceSync = false) {
                 localStorage.setItem('ff_visited', 'true');
                 setTimeout(() => showWhatsNew(true), 500);
             }
-            setTimeout(() => showSettingsBubbleIfNeeded(), 1000);
+            // Schedule auto tutorial (will show after 2 seconds if conditions are met)
+            scheduleTutorialAutoShow();
         }
 
         applyFilters();
@@ -3252,10 +3308,541 @@ document.addEventListener('dragstart', function(e) {
     }
 }, { passive: false });
 
+// ================================================================
+//  🆕 TUTORIAL OVERLAY & MODAL FUNCTIONS (UPDATED)
+// ================================================================
+
+let tutorialDismissed = localStorage.getItem('ff_tutorial_dismissed') === 'true';
+let tutorialAutoTimer = null;
+let tutorialTouchBlocked = false;
+
+// Show overlay – waits for Hayato image to load
+async function showTutorialOverlay(manual = false) {
+    if (!manual && tutorialDismissed) return;
+    const overlay = document.getElementById('tutorialOverlay');
+    if (!overlay) return;
+
+    // Wait for image to load or fail
+    const loaded = await loadHayatoImage();
+
+    // Show overlay only after image is ready (or if it failed)
+    overlay.style.display = 'flex';
+
+    // If not manual, block touch for 0.5 seconds to prevent accidental dismissal
+    if (!manual) {
+        tutorialTouchBlocked = true;
+        setTimeout(() => {
+            tutorialTouchBlocked = false;
+        }, 500);
+    }
+
+    if (!loaded) {
+        // Image failed – short toast
+        showToast('Hayato image unavailable. Tap to open tutorial.');
+    }
+}
+
+// Hide overlay
+function hideTutorialOverlay(setDismissed = false) {
+    const overlay = document.getElementById('tutorialOverlay');
+    if (overlay) overlay.style.display = 'none';
+    if (setDismissed) {
+        tutorialDismissed = true;
+        localStorage.setItem('ff_tutorial_dismissed', 'true');
+    }
+}
+
+// Load Hayato image – returns boolean indicating success
+async function loadHayatoImage() {
+    const img = document.getElementById('hayatoImage');
+    const url = CONFIG.HAYATO_IMAGE_URL;
+    const fallbackUrl = CONFIG.FALLBACK_HAYATO_IMAGE_URL;
+    const cacheName = 'ff-tutorial-images';
+    const cacheKey = 'hayato';
+
+    let cachedBlob = null;
+    let cache = null;
+
+    // 1. Try to get from cache
+    try {
+        cache = await caches.open(cacheName);
+        const cachedResponse = await cache.match(cacheKey);
+        if (cachedResponse) {
+            cachedBlob = await cachedResponse.blob();
+        }
+    } catch (e) { /* ignore */ }
+
+    // 2. If cached, use it immediately and refresh in background
+    if (cachedBlob) {
+        const objectUrl = URL.createObjectURL(cachedBlob);
+        img.src = objectUrl;
+        img.dataset.objectUrl = objectUrl;
+        img.style.display = 'block';
+        refreshHayatoInBackground();
+        return true;
+    }
+
+    // 3. No cache – fetch fresh and wait
+    try {
+        const response = await fetchWithFallback(
+            url + '?nocache=' + Date.now(),
+            fallbackUrl + '?nocache=' + Date.now(),
+            { timeout: 10000 }
+        );
+        const blob = await response.blob();
+        if (cache) {
+            await cache.put(cacheKey, new Response(blob));
+        }
+        const objectUrl = URL.createObjectURL(blob);
+        img.src = objectUrl;
+        img.dataset.objectUrl = objectUrl;
+        img.style.display = 'block';
+        return true;
+    } catch (err) {
+        console.warn('Failed to fetch Hayato image:', err);
+        img.style.display = 'none';
+        return false;
+    }
+}
+
+// Refresh Hayato in background without blocking
+async function refreshHayatoInBackground() {
+    try {
+        const response = await fetchWithFallback(
+            CONFIG.HAYATO_IMAGE_URL + '?nocache=' + Date.now(),
+            CONFIG.FALLBACK_HAYATO_IMAGE_URL + '?nocache=' + Date.now(),
+            { timeout: 10000 }
+        );
+        const blob = await response.blob();
+        const cache = await caches.open('ff-tutorial-images');
+        await cache.put('hayato', new Response(blob));
+        // Update displayed image if overlay is still open
+        const img = document.getElementById('hayatoImage');
+        const overlay = document.getElementById('tutorialOverlay');
+        if (overlay && overlay.style.display === 'flex') {
+            const objectUrl = URL.createObjectURL(blob);
+            if (img.dataset.objectUrl) URL.revokeObjectURL(img.dataset.objectUrl);
+            img.src = objectUrl;
+            img.dataset.objectUrl = objectUrl;
+        }
+    } catch (_) { /* ignore */ }
+}
+
+// Overlay click handler – opens tutorial modal
+document.addEventListener('click', function(e) {
+    const overlay = document.getElementById('tutorialOverlay');
+    if (!overlay || overlay.style.display === 'none') return;
+
+    // Ignore clicks if touch is blocked (auto-show first 0.5 sec)
+    if (tutorialTouchBlocked) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+    }
+
+    if (e.target.closest('#tutorialDismissBtn')) {
+        hideTutorialOverlay(true);
+        return;
+    }
+    if (overlay.contains(e.target)) {
+        hideTutorialOverlay(true);
+        openTutorialModal();
+    }
+});
+
+// Dismiss button – also set flag
+document.getElementById('tutorialDismissBtn')?.addEventListener('click', function(e) {
+    e.stopPropagation();
+    hideTutorialOverlay(true);
+});
+
+// Manual play button
+document.getElementById('playTutorialBtn')?.addEventListener('click', function() {
+    closeModal('settingsModal');
+    showTutorialOverlay(true);
+});
+
+// ================================================================
+//  🆕 SCHEDULE AUTO TUTORIAL SHOW
+// ================================================================
+function scheduleTutorialAutoShow() {
+    // Don't schedule if already dismissed
+    if (tutorialDismissed) return;
+
+    // Clear any pending timer
+    if (tutorialAutoTimer) {
+        clearTimeout(tutorialAutoTimer);
+        tutorialAutoTimer = null;
+    }
+
+    // Check if conditions are ready:
+    // - no loading overlay
+    // - no modals open
+    // - initial load done (grid populated)
+    const isReady = !loadingOverlay.classList.contains('active') &&
+                    activeModalStack.length === 0 &&
+                    initialLoadDone &&
+                    allItems.length > 0;
+
+    if (isReady) {
+        // Start 2-second countdown
+        tutorialAutoTimer = setTimeout(() => {
+            // Re-check just before showing (user might have opened a modal in the meantime)
+            if (!tutorialDismissed && !loadingOverlay.classList.contains('active') && activeModalStack.length === 0) {
+                showTutorialOverlay(false);   // auto mode (touch block enabled)
+            } else {
+                // Conditions changed – try again later
+                scheduleTutorialAutoShow();
+            }
+        }, 2000);
+    } else {
+        // Not ready – check again after 500ms
+        tutorialAutoTimer = setTimeout(() => {
+            scheduleTutorialAutoShow();
+        }, 500);
+    }
+}
+
+// ----- TUTORIAL MODAL (reuses reportModal) with footer close button -----
+async function openTutorialModal() {
+    const modal = document.getElementById('reportModal');
+    const title = document.getElementById('reportTitle');
+    const content = document.getElementById('reportContent');
+    const footer = document.getElementById('reportFooter');
+
+    // Remove whatsnew-mode if present, add tutorial-mode
+    if (content) {
+        content.classList.remove('whatsnew-mode');
+        content.classList.add('tutorial-mode');
+    }
+
+    title.textContent = "Hayato's Tutorial";
+    content.innerHTML = `<div class="whatsnew-loading"><div class="spinner"></div><p>Loading tutorial...</p></div>`;
+    footer.innerHTML = '';
+
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    if (!activeModalStack.includes('reportModal')) {
+        activeModalStack.push('reportModal');
+    }
+
+    try {
+        const markdown = await fetchTutorialMarkdown();
+        const html = parseTutorialMarkdown(markdown);
+        content.innerHTML = html;
+        // Ensure tutorial-mode is still applied
+        content.classList.add('tutorial-mode');
+        loadTutorialImages(content);
+
+        // Add close button to footer
+        document.getElementById('reportFooter').innerHTML = `<button class="whatsnew-close-btn" onclick="closeModal('reportModal')" style="background: var(--glow); border: none; color: #fff; padding: 6px 18px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(168, 66, 255, 0.4);">CLOSE</button>`;
+    } catch (err) {
+        content.innerHTML = `<p class="whatsnew-error">Failed to load tutorial: ${err.message}</p>`;
+        // Also add close button in error case
+        document.getElementById('reportFooter').innerHTML = `<button class="whatsnew-close-btn" onclick="closeModal('reportModal')" style="background: var(--glow); border: none; color: #fff; padding: 6px 18px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(168, 66, 255, 0.4);">CLOSE</button>`;
+    }
+}
+
+async function fetchTutorialMarkdown() {
+    const cache = await caches.open('ff-tutorial');
+    const cacheKey = CONFIG.TUTORIAL_MD_URL;
+    let cached = null;
+    try {
+        const cachedResponse = await cache.match(cacheKey);
+        if (cachedResponse) cached = await cachedResponse.text();
+    } catch (_) {}
+
+    try {
+        const response = await fetchWithFallback(
+            CONFIG.TUTORIAL_MD_URL + '?nocache=' + Date.now(),
+            CONFIG.FALLBACK_TUTORIAL_MD_URL + '?nocache=' + Date.now(),
+            { timeout: 10000 }
+        );
+        const text = await response.text();
+        await cache.put(cacheKey, new Response(text));
+        return text;
+    } catch (err) {
+        if (cached) {
+            showToast('Failed to refresh tutorial. Showing cached data.');
+            return cached;
+        }
+        throw err;
+    }
+}
+
+// Enhanced markdown parser: supports bullet lists and inline links
+function parseTutorialMarkdown(md) {
+    const lines = md.split('\n');
+    let html = '';
+    let inList = false;
+
+    for (let line of lines) {
+        line = line.trim();
+
+        // --- Support for explicit <br> line breaks ---
+        if (line.toLowerCase() === '<br>') {
+            if (inList) {
+                html += '</ul>';
+                inList = false;
+            }
+            html += '<br>';
+            continue;
+        }
+
+        if (line === '') {
+            if (inList) {
+                html += '</ul>';
+                inList = false;
+            }
+            // Optionally add a line break for empty lines outside lists
+            // (uncomment if you want empty lines to become <br> as well)
+            // html += '<br>';
+            continue;
+        }
+
+        // Headings
+        if (line.startsWith('#')) {
+            if (inList) {
+                html += '</ul>';
+                inList = false;
+            }
+            const level = line.match(/^#+/)[0].length;
+            const text = line.replace(/^#+\s*/, '');
+            html += `<h${level}>${parseInline(text)}</h${level}>`;
+            continue;
+        }
+
+        // Bullet list item: starts with "- "
+        if (line.startsWith('- ')) {
+            const text = line.slice(2).trim();
+            const parsed = parseInline(text);
+            if (!inList) {
+                html += '<ul>';
+                inList = true;
+            }
+            html += `<li>${parsed}</li>`;
+            continue;
+        }
+
+        // Image placeholder: <img: filename>
+        const imgMatch = line.match(/^<img:\s*(.+?)\s*>$/);
+        if (imgMatch) {
+            if (inList) {
+                html += '</ul>';
+                inList = false;
+            }
+            const filename = imgMatch[1].trim();
+            html += `<div class="tutorial-image-placeholder" data-filename="${escapeHtml(filename)}"></div>`;
+            continue;
+        }
+
+        // Normal paragraph
+        if (inList) {
+            html += '</ul>';
+            inList = false;
+        }
+        html += `<p>${parseInline(line)}</p>`;
+    }
+
+    if (inList) html += '</ul>';
+    return html;
+}
+
+// Helper to parse inline formatting: bold **text**, links [text](url)
+function parseInline(text) {
+    // Bold: **text** -> <strong>text</strong>
+    text = text.replace(/\*\*(.+?)\*\*/g, (match, p1) => `<strong>${escapeHtml(p1)}</strong>`);
+    // Links: [text](url)
+    text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, linkText, url) => {
+        return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" style="color: #2196F3; text-decoration: underline;">${escapeHtml(linkText)}</a>`;
+    });
+    return text;
+}
+
+// Helper: parse inline links [text](url)
+function parseInlineLinks(text) {
+    return text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, linkText, url) => {
+        return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" style="color: #2196F3; text-decoration: underline;">${escapeHtml(linkText)}</a>`;
+    });
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+async function loadTutorialImages(container) {
+    const placeholders = container.querySelectorAll('.tutorial-image-placeholder');
+    // Create an array of promises for each image
+    const loadPromises = Array.from(placeholders).map(async (placeholder) => {
+        const filename = placeholder.dataset.filename;
+        const fullUrl = CONFIG.ONLINE_BASE_URL + filename;
+        const fallbackUrl = CONFIG.FALLBACK_ONLINE_BASE_URL + filename;
+
+        // Create a wrapper to hold the spinner and the image
+        const wrapper = document.createElement('div');
+        wrapper.className = 'tutorial-image-wrapper';
+        placeholder.replaceWith(wrapper);
+
+        // Show a spinner while loading
+        const spinner = document.createElement('div');
+        spinner.className = 'tutorial-image-spinner';
+        wrapper.appendChild(spinner);
+
+        try {
+            // Cache-first load
+            const { blob, fromCache } = await loadImageWithRetryForTutorial(fullUrl, fallbackUrl);
+            const objectUrl = URL.createObjectURL(blob);
+
+            const img = document.createElement('img');
+            img.alt = filename;
+            img.className = 'tutorial-image';
+            img.src = objectUrl;
+            img.dataset.objectUrl = objectUrl;
+            img.onload = () => img.classList.add('loaded');
+
+            // Replace spinner with image
+            wrapper.innerHTML = '';
+            wrapper.appendChild(img);
+
+            // Cache the blob if it was from network
+            if (!fromCache) {
+                const cache = await caches.open('ff-tutorial-images');
+                await cache.put(fullUrl, new Response(blob));
+            }
+        } catch (err) {
+            console.warn('Failed to load tutorial image:', filename, err);
+            // Show fallback text
+            wrapper.innerHTML = '';
+            const fallbackText = document.createElement('span');
+            fallbackText.textContent = `<image: ${filename}>`;
+            fallbackText.className = 'tutorial-image-fallback';
+            wrapper.appendChild(fallbackText);
+        }
+    });
+
+    // Wait for all images to load in parallel
+    await Promise.all(loadPromises);
+}
+
+// Variant of loadImageWithRetry for tutorial images (uses online base)
+async function loadImageWithRetryForTutorial(url, fallbackUrl) {
+    const CACHE_TIMEOUT = 2000;
+    const RETRY_DELAY = 500;
+    const TOTAL_TIMEOUT = 10000;
+
+    async function attemptCache(url) {
+        try {
+            const cache = await caches.open('ff-tutorial-images');
+            const response = await cache.match(url);
+            if (!response) return null;
+            const blob = await response.blob();
+            if (blob && blob.size > 0) return blob;
+            return null;
+        } catch (_) { return null; }
+    }
+
+    async function fetchWithTimeout(url, timeout) {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeout);
+        try {
+            const response = await fetch(url, { signal: controller.signal });
+            clearTimeout(id);
+            return response;
+        } catch (err) {
+            clearTimeout(id);
+            throw err;
+        }
+    }
+
+    async function networkFetchWithFallback(primaryUrl, fallbackUrl) {
+        let response;
+        try {
+            response = await fetchWithTimeout(primaryUrl, 8000);
+        } catch (err) {
+            const netErr = new Error('Network error: ' + err.message);
+            netErr.status = 0;
+            throw netErr;
+        }
+        if (response.ok) return response;
+        if (response.status === 403 && fallbackUrl) {
+            try {
+                const fallbackResponse = await fetchWithTimeout(fallbackUrl, 5000);
+                if (fallbackResponse.ok) return fallbackResponse;
+                const err = new Error(`Fallback CDN returned ${fallbackResponse.status}`);
+                err.status = fallbackResponse.status;
+                throw err;
+            } catch (fallbackErr) {
+                const err = new Error(`Primary CDN 403 and fallback failed: ${fallbackErr.message}`);
+                err.status = 403;
+                throw err;
+            }
+        }
+        const err = new Error(`Network fetch failed: ${response.status}`);
+        err.status = response.status;
+        throw err;
+    }
+
+    const overallTimeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('loadImageWithRetry total timeout')), TOTAL_TIMEOUT)
+    );
+
+    try {
+        const result = await Promise.race([
+            (async () => {
+                let blob = await withTimeout(attemptCache(url), CACHE_TIMEOUT);
+                if (blob) return { blob, fromCache: true };
+
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+                blob = await withTimeout(attemptCache(url), CACHE_TIMEOUT);
+                if (blob) return { blob, fromCache: true };
+
+                const response = await networkFetchWithFallback(url, fallbackUrl);
+                const dataBlob = await response.blob();
+                if (!dataBlob || dataBlob.size === 0) throw new Error('Empty blob from network');
+                return { blob: dataBlob, fromCache: false };
+            })(),
+            overallTimeout
+        ]);
+        return result;
+    } catch (err) {
+        throw err;
+    }
+}
+
+// --------------------------------------------------------------
+//  UPDATE SETTINGS SCROLL-DOWN INDICATOR
+// --------------------------------------------------------------
+function updateSettingsScrollDown() {
+    const body = document.querySelector('.settings-body');
+    const btn = document.getElementById('settingsScrollDownBtn');
+    if (!body || !btn) return;
+    const threshold = 20;
+    const isScrollable = body.scrollHeight - body.clientHeight > threshold;
+    const isAtBottom = body.scrollTop + body.clientHeight >= body.scrollHeight - threshold;
+    if (isScrollable && !isAtBottom) {
+        btn.classList.add('visible');
+    } else {
+        btn.classList.remove('visible');
+    }
+}
+
+// Click handler for scroll-down button
+document.getElementById('settingsScrollDownBtn')?.addEventListener('click', function() {
+    const body = document.querySelector('.settings-body');
+    if (body) {
+        body.scrollTo({ top: body.scrollHeight, behavior: 'smooth' });
+    }
+});
+
 // --------------------------------------------------------------
 //  STARTUP INITIALIZATION
 // --------------------------------------------------------------
 window.addEventListener('DOMContentLoaded', async () => {
+    // Fetch WebApp version (cached if offline) – must be done early
+    await fetchSWVersion();
+
     loadFavState();
 
     if (sessionStorage.getItem('webapp_updated') === 'true') {
@@ -3279,14 +3866,6 @@ window.addEventListener('DOMContentLoaded', async () => {
         isUpdateReload = false;
     }
 
-    const bubbleClose = document.getElementById('settingsBubbleClose');
-    if (bubbleClose) {
-        bubbleClose.addEventListener('click', (e) => {
-            e.stopPropagation();
-            dismissSettingsBubble();
-        });
-    }
-
     loadSettings();
     initStorageTracking();
     const workerSupported = initWorker();
@@ -3301,6 +3880,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     tagFilter.addEventListener('change', applyFilters);
     typeFilter.addEventListener('change', applyFilters);
     rareFilter.addEventListener('change', applyFilters);
+
+    // ---- ADDED: close settings modal via footer button ----
+    document.getElementById('settingsCloseBtn')?.addEventListener('click', () => {
+        closeModal('settingsModal');
+    });
 });
 
 const origInitDatabase = initDatabase;

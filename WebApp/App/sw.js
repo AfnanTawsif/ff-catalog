@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ff-catalog-app-v1.2.2';
+const CACHE_NAME = 'ff-catalog-app-v1.3.0';
 const ASSETS = [
     './',
     './index.html',

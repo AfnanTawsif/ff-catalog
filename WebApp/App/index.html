@@ -946,8 +946,8 @@
             animation: spin 0.8s linear infinite;
         }
         body.reduce-effects .main-spinner {
-            animation: none !important;
-            border-color: var(--glow);
+            animation: spin 0.8s linear infinite !important;
+            border-color: var(--border);
             border-top-color: var(--glow);
             background: transparent;
         }
@@ -1800,24 +1800,37 @@
         }
 
         .settings-body {
-            padding: 25px 20px 20px 20px;
+            padding: 25px 20px 0px 20px;
             overflow-y: auto;
             flex-grow: 1;
             background: var(--settings-body-bg);
             max-height: 60vh;
+            position: relative;
         }
         body.reduce-effects .settings-body {
             background: #161616;
         }
 
         .settings-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             padding: 10px 20px;
-            text-align: center;
             background: var(--settings-header-bg);
             border-top: 1px solid rgba(255, 255, 255, 0.06);
             flex-shrink: 0;
             font-size: 13px;
             color: var(--text-muted);
+        }
+
+        /* Mute the "Built by: xxx" text */
+        .settings-footer span {
+            opacity: 0.5;
+            color: #999;
+        }
+        .settings-footer span strong {
+            color: #bbb;
+            opacity: 1;
         }
         body.reduce-effects .settings-footer {
             background: #141414;
@@ -1850,6 +1863,14 @@
 
         .settings-section {
             margin-bottom: 25px;
+        }
+        /* Settings divider between sections */
+        .settings-divider {
+            border-bottom: 1px solid var(--border);
+            margin: 15px 0;
+        }
+        body.reduce-effects .settings-divider {
+            border-bottom-color: #2a2a2a;
         }
         .settings-section:last-child {
             margin-bottom: 0;
@@ -2241,6 +2262,15 @@
             background: #161616;
         }
 
+        /* Reduce top padding and heading margin in tutorial mode */
+        .report-body:has(.tutorial-mode) {
+            padding-top: 18px;
+        }
+        .report-text.tutorial-mode > *:first-child {
+            margin-top: 4;
+        }
+
+        /* ----- REPORT STYLES (shared) ----- */
         .report-text h3.report-title {
             font-size: 16px;
             color: var(--glow);
@@ -2262,14 +2292,22 @@
             color: #fff;
             margin: 10px 0 8px;
         }
-        .report-text ul {
+        .report-text p {
+            font-size: 13px;
+            color: #aaa;
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+
+        /* --- Non-tutorial report lists (diagnostic, etc.) --- */
+        .report-text:not(.tutorial-mode) ul {
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
             list-style: none;
             margin-bottom: 15px;
         }
-        .report-text li {
+        .report-text:not(.tutorial-mode) li {
             background: #2a2a2a;
             padding: 4px 10px;
             border-radius: 4px;
@@ -2277,15 +2315,73 @@
             color: #ccc;
             border: 1px solid var(--border);
         }
-        body.reduce-effects .report-text li {
+        body.reduce-effects .report-text:not(.tutorial-mode) li {
             background: #1a1a1a;
             border-color: #2a2a2a;
         }
-        .report-text p {
+
+        /* --- Tutorial mode (clean bullet lists) --- */
+        .report-text.tutorial-mode ul {
+            display: block;
+            list-style-type: disc;
+            color: #a842ff;
+            padding-left: 20px;
+            margin-bottom: 15px;
+        }
+        .report-text.tutorial-mode li {
+            background: transparent !important;
+            padding: 4px 0 !important;
+            border: none !important;
             font-size: 13px;
-            color: #aaa;
-            margin-bottom: 10px;
-            line-height: 1.5;
+            color: #ddd; /* whiter than #ccc */
+            border-radius: 0 !important;
+            display: list-item !important;
+            list-style-type: disc !important;
+        }
+        .report-text.tutorial-mode li::before {
+            content: none !important;
+        }
+
+        .report-text.tutorial-mode h1,
+        .report-text.tutorial-mode h2,
+        .report-text.tutorial-mode h3,
+        .report-text.tutorial-mode h4,
+        .report-text.tutorial-mode h5,
+        .report-text.tutorial-mode h6 {
+            color: var(--glow);
+            margin-top: 1.5em; /* gap before headings */
+        }
+        .report-text.tutorial-mode h1:first-child,
+        .report-text.tutorial-mode h2:first-child,
+        .report-text.tutorial-mode h3:first-child,
+        .report-text.tutorial-mode h4:first-child,
+        .report-text.tutorial-mode h5:first-child,
+        .report-text.tutorial-mode h6:first-child {
+    margin-top: 0; /* no gap if it's the first element */
+        }
+
+        /* Make tutorial paragraph text whiter */
+        .report-text.tutorial-mode p {
+            color: #eee;
+        }
+
+        /* ----- What's New clean list styles (NEW) ----- */
+        .report-text.whatsnew-mode li {
+            background: transparent !important;
+            border: none !important;
+            padding: 4px 0 4px 22px;
+            border-radius: 0;
+            font-size: 13px;
+            color: #ccc;
+            display: list-item;
+            position: relative;
+        }
+        .report-text.whatsnew-mode li::before {
+            content: "•";
+            position: absolute;
+            left: 2px;
+            color: var(--glow);
+            font-weight: bold;
         }
 
         .summary-section {
@@ -2498,7 +2594,7 @@
             animation: spin 0.7s linear infinite;
         }
         body.reduce-effects .profile-loader .spinner {
-            animation: none !important;
+            /* animation: none removed */;
             border-color: #444;
             border-top-color: #444;
         }
@@ -2704,30 +2800,44 @@
         }
 
         .whatsnew-version-card ul {
-        display: block;
-        list-style: none;
-        padding: 0;
-        margin: 6px 0 0 0;
+            display: block;
+            list-style: none;
+            padding: 0;
+            margin: 6px 0 0 0;
         }
+
+        /* Override the generic .report-text:not(.tutorial-mode) ul */
+        .report-text.whatsnew-mode .whatsnew-version-card ul {
+            display: block;
+            gap: 0;
+            margin-bottom: 0;
+        }
+
         .whatsnew-version-card ul li {
-        display: list-item;
-        padding: 4px 0 4px 22px;
-        position: relative;
-        font-size: 13px;
-        color: #ccc;
-        line-height: 1.5;
-        background: none;
-        border: none;
+            display: list-item;
+            padding: 2px 0 2px 22px;   /* reduced vertical padding */
+            margin: 0;
+            position: relative;
+            font-size: 13px;
+            color: #ccc;
+            line-height: 1.4;          /* reduced line-height for tighter spacing */
+            background: none;
+            border: none;
         }
+        .whatsnew-version-card ul li + li {
+            margin-top: 2px;
+        }
+
         .whatsnew-version-card ul li::before {
-        content: "•";
-        position: absolute;
-        left: 2px;
-        color: var(--glow);
-        font-weight: bold;
+            content: "•";
+            position: absolute;
+            left: 2px;
+            color: var(--glow);
+            font-weight: bold;
         }
+
         body.reduce-effects .whatsnew-version-card ul li::before {
-        color: #a842ff;
+            color: #a842ff;
         }
 
         /* loading/error styles – keep as is */
@@ -2747,9 +2857,9 @@
         animation: spin 0.7s linear infinite;
         }
         body.reduce-effects .whatsnew-loading .spinner {
-        animation: none !important;
-        border-color: #444;
-        border-top-color: #444;
+            /* animation: none removed */;
+            border-color: #444;
+            border-top-color: #444;
         }
         .whatsnew-loading p {
         color: var(--text-muted);
@@ -2817,6 +2927,254 @@
         .missing-icons-grid .grid-row .name-cell .copyable-box {
             display: inline-block;
             padding: 0 4px;
+        }
+
+        /* ----- TUTORIAL OVERLAY (updated) ----- */
+        .tutorial-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 90; /* below modals (100) but above grid */
+            display: none;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none; /* allow clicks to pass to children */
+        }
+        .tutorial-overlay-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            pointer-events: auto;
+        }
+        .tutorial-overlay-content {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            max-width: 90vw;
+            max-height: 80vh;
+            width: auto;
+            height: auto;
+        }
+        .tutorial-overlay-content > * {
+            pointer-events: auto;
+        }
+        .tutorial-image-wrapper {
+            position: relative;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 10px 0;
+        }
+
+        .tutorial-image-spinner {
+            width: 36px;
+            height: 36px;
+            border: 4px solid var(--border);
+            border-top-color: var(--glow);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        body.reduce-effects .tutorial-image-spinner {
+            animation: spin 0.8s linear infinite !important;
+            border-color: var(--border);
+            border-top-color: var(--glow);
+        }
+
+        .tutorial-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .tutorial-image.loaded {
+            opacity: 1;
+        }
+        .hayato-image {
+            max-width: 80vw;
+            max-height: 60vh;
+            width: auto;
+            height: auto;
+            display: block;
+            object-fit: contain;
+            border-radius: 0;
+            animation: floatHayato 4s ease-in-out infinite;
+        }
+        @keyframes floatHayato {
+            0%, 100% { transform: translateY(0) rotate(-1deg); }
+            50% { transform: translateY(-15px) rotate(1deg); }
+        }
+        body.reduce-effects .hayato-image {
+            animation: none !important;
+        }
+
+        .tutorial-overlay-text {
+            margin-top: 2vh;          /* dynamic spacing relative to viewport height */
+            font-size: 24px;
+            font-weight: 700;
+            color: #fff;
+            text-shadow: 0 2px 20px rgba(0,0,0,0.6);
+            background: linear-gradient(270deg, #a842ff, #E040FB, #7B2FBE, #a842ff);
+            background-size: 400% 100%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradientMove 4s ease-in-out infinite;
+            letter-spacing: 1px;
+            pointer-events: none;
+        }
+        body.reduce-effects .tutorial-overlay-text {
+            animation: none !important;
+            background: none !important;
+            -webkit-text-fill-color: #a842ff !important;
+            color: #a842ff !important;
+        }
+
+        .tutorial-dismiss-btn {
+            position: absolute;
+            top: 2vh;                 /* 2% from top of container */
+            right: 2vw;               /* 2% from right */
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: #fff;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 28px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, transform 0.2s;
+            pointer-events: auto;
+            z-index: 10;
+            backdrop-filter: blur(4px);
+        }
+        .tutorial-dismiss-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+        body.reduce-effects .tutorial-dismiss-btn {
+            transition: none;
+            backdrop-filter: none;
+        }
+
+        /* TUTORIAL IMAGES IN MODAL */
+        .tutorial-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 10px 0;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .tutorial-image.loaded {
+            opacity: 1;
+        }
+        .tutorial-image-fallback {
+            color: #aaa;
+            font-style: italic;
+            display: inline-block;
+            margin: 8px 0;
+            background: #222;
+            padding: 4px 12px;
+            border-radius: 4px;
+        }
+
+        /* Reduce tutorial title sizes */
+        .report-text h1 {
+            font-size: 1.2em;
+            margin: 0.8em 0 0.4em;
+        }
+        .report-text h2 {
+            font-size: 1.1em;
+            margin: 0.6em 0 0.3em;
+        }
+        .report-text h3 {
+            font-size: 1.0em;
+            margin: 0.5em 0 0.2em;
+        }
+        .report-text h4 {
+            font-size: 0.95em;
+            margin: 0.4em 0 0.2em;
+        }
+        .report-text h5, .report-text h6 {
+            font-size: 0.9em;
+            margin: 0.3em 0 0.1em;
+        }
+
+        /* Settings scroll-down indicator */
+.settings-scroll-down {
+            position: sticky;
+            bottom: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30px;
+            height: 30px;
+            background: rgba(20, 20, 20, 0.6);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ccc;
+            cursor: pointer;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease, transform 0.2s ease;
+            z-index: 5;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            margin-top: 0;
+            flex-shrink: 0;
+            outline: none;
+        }
+        .settings-scroll-down:focus,
+        .settings-scroll-down:focus-visible {
+            outline: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+        .settings-scroll-down.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .settings-scroll-down:hover {
+            background: rgba(40, 40, 40, 0.8);
+            color: #fff;
+            transform: translateX(-50%) scale(1.08);
+        }
+        .settings-scroll-down:active {
+            transform: translateX(-50%) scale(0.92);
+        }
+        body.reduce-effects .settings-scroll-down {
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            background: #1a1a1a !important;
+            border-color: #2a2a2a;
+            transition: none;
+        }
+        body.reduce-effects .settings-scroll-down:hover {
+            transform: translateX(-50%) scale(1);
+            background: #1a1a1a !important;
+        }
+        body.reduce-effects .settings-scroll-down:focus,
+        body.reduce-effects .settings-scroll-down:focus-visible {
+            box-shadow: none;
         }
 
         /* ----- Responsive / Widescreen ----- */
@@ -2999,6 +3357,18 @@
             .profile-buttons {
                 gap: 12px;
             }
+            /* Tutorial overlay tweaks for small screens */
+            .tutorial-overlay-text {
+                margin-top: 1.5vh;
+                font-size: 18px;
+            }
+            .tutorial-dismiss-btn {
+                top: 1vh;
+                right: 1vw;
+                width: 32px;
+                height: 32px;
+                font-size: 22px;
+            }
         }
 
         @media (max-width: 420px) {
@@ -3071,139 +3441,63 @@
             border-color: #2a2a2a;
         }
 
-        /* ----- Settings Bubble & Inward Pulse Effects ----- */
-        @keyframes pulse-inward-long {
-            0% {
-                box-shadow: 0 0 0 300px rgba(168, 66, 255, 0);
-            }
-            40% {
-                box-shadow: 0 0 0 120px rgba(168, 66, 255, 0.2);
-            }
-            100% {
-                box-shadow: 0 0 0 0 rgba(168, 66, 255, 0.9);
-            }
-        }
-
-        .settings-btn.pulse-inward {
-            animation: pulse-inward-long 0.8s ease-in infinite !important;
-        }
-        body.reduce-effects .settings-btn.pulse-inward {
-            animation: none !important;
-        }
-
-        .settings-bubble {
-            position: absolute;
-            top: 50px;
-            left: 0;
-            background: var(--glow);
-            color: #fff;
-            padding: 8px 30px 8px 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            box-shadow: 0 4px 15px rgba(168, 66, 255, 0.4);
-            opacity: 0;
-            visibility: hidden;
-            transform: translateY(-10px);
-            transition: all 0.3s var(--ease-out-back);
-            z-index: 100;
-            pointer-events: none;
-            white-space: nowrap;
-        }
-        body.reduce-effects .settings-bubble {
-            box-shadow: none !important;
-            transition: none;
-            background: #a842ff;
-        }
-        .settings-bubble.show {
-            opacity: 1;
-            visibility: visible;
-            transform: translateY(0);
-            pointer-events: auto;
-        }
-        body.reduce-effects .settings-bubble.show {
-            transform: none;
-        }
-
-        .settings-bubble::before {
-            content: '';
-            position: absolute;
-            top: -7px;
-            left: 19px;
-            transform: translateX(-50%);
-            border-left: 7px solid transparent;
-            border-right: 7px solid transparent;
-            border-bottom: 7px solid var(--glow);
-        }
-        body.reduce-effects .settings-bubble::before {
-            border-bottom-color: #a842ff;
-        }
-
-        .settings-bubble-close {
-            position: absolute;
-            top: 50%;
-            right: 6px;
-            transform: translateY(-50%);
-            background: rgba(0, 0, 0, 0.2);
-            border: none;
-            color: #fff;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            line-height: 1;
-            transition: background 0.2s;
-        }
-        body.reduce-effects .settings-bubble-close {
-            transition: none;
-        }
-        .settings-bubble-close:hover {
-            background: rgba(0, 0, 0, 0.5);
-        }
-        body.reduce-effects .settings-bubble-close:hover {
-            background: rgba(0, 0, 0, 0.2);
-        }
-
-        /* ====== reduce-effects: extra overrides for safety ====== */
+        /* ====== REDUCE-EFFECTS OVERRIDES ====== */
         body.reduce-effects * {
             animation-play-state: paused !important;
         }
+
         body.reduce-effects .card,
         body.reduce-effects .img-container,
         body.reduce-effects .modal-content,
         body.reduce-effects .pagination-glass,
         body.reduce-effects .fav-toolbar,
         body.reduce-effects header,
-        body.reduce-effects .settings-bubble,
         body.reduce-effects .profile-image-frame,
         body.reduce-effects .toast-notification,
         body.reduce-effects .dl-dropdown-menu {
             transition: none !important;
         }
-        body.reduce-effects .btn-spinner,
+
+        /* Loading animations remain active in reduced-effects mode.
+           These are functional loading indicators, not decorative effects. */
         body.reduce-effects .main-spinner,
         body.reduce-effects .spinner,
-        body.reduce-effects .profile-loader .spinner {
-            animation: none !important;
+        body.reduce-effects .btn-spinner,
+        body.reduce-effects .profile-loader .spinner,
+        body.reduce-effects .tutorial-image-spinner {
+            animation-play-state: running !important;
         }
+
+        body.reduce-effects .main-spinner {
+            animation: spin 0.8s linear infinite !important;
+        }
+
+        body.reduce-effects .spinner,
+        body.reduce-effects .btn-spinner,
+        body.reduce-effects .profile-loader .spinner,
+        body.reduce-effects .tutorial-image-spinner {
+            animation-name: spin !important;
+            animation-play-state: running !important;
+        }
+
         body.reduce-effects .modal {
             transition: none !important;
         }
+
         body.reduce-effects .modal.hidden .modal-content {
             transform: none !important;
         }
+
         body.reduce-effects .rare-PURPLE_PLUS,
         body.reduce-effects .rare-ORANGE_PLUS,
         body.reduce-effects .storage-bar-fill {
             background: #666 !important;
         }
+
         body.reduce-effects .storage-bar-fill.warning {
             background: #F57C00 !important;
         }
+
         body.reduce-effects .storage-bar-fill.danger {
             background: #D32F2F !important;
         }
@@ -3222,11 +3516,6 @@
             <button id="openSettings" class="settings-btn" title="Settings">
                 <svg viewBox="0 0 24 24" fill="#9b3fe8"><g transform="translate(12, 12) scale(1.3) translate(-12, -12)"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></g></svg>
             </button>
-
-            <div id="settingsBubble" class="settings-bubble">
-                Click here for more settings
-                <button id="settingsBubbleClose" class="settings-bubble-close">&times;</button>
-            </div>
 
             <h1 id="mainTitle" title="Go to Home">FREE FIRE CATALOG</h1>
 
@@ -3454,7 +3743,7 @@
 
                         <!-- ===== REDUCE VISUAL EFFECTS TOGGLE ===== -->
                         <div class="reduce-effects-row">
-                            <span class="settings-label">Reduce visual effects</span>
+                            <span class="settings-label">Performance mode</span>
                             <div class="toggle-wrapper">
                                 <span class="toggle-status" id="reduceEffectsStatus">Off</span>
                                 <label class="toggle-switch">
@@ -3488,6 +3777,19 @@
                                     <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                    <!-- Divider between Icon storage and Guide -->
+<div class="settings-divider"></div>
+                    <!-- ===== GUIDE SECTION (moved from App tab) ===== -->
+                    <div class="settings-section">
+                        <h3>User Guide</h3>
+                        <div class="settings-row">
+                            <span class="settings-label">Play tutorial</span>
+                            <button id="playTutorialBtn" class="action-btn-small">
+                                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                                Play
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -3530,6 +3832,8 @@
                             </button>
                         </div>
                     </div>
+
+                    <!-- Guide section removed from here – moved to General -->
 
                     <div class="settings-section">
                         <h3>Advanced</h3>
@@ -3613,10 +3917,20 @@
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="settings-footer">
+                <!-- Scroll down indicator -->
+                <div id="settingsScrollDownBtn" class="settings-scroll-down">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                        <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+                    </svg>
+                </div>
+
+            </div> <!-- settings-body -->
+
+            <!-- UPDATED SETTINGS FOOTER with close button and left-aligned built-by -->
+            <div class="settings-footer" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px;">
                 <span>Built by: <strong id="devNameUI"></strong></span>
+                <button id="settingsCloseBtn" class="whatsnew-close-btn" style="background: var(--glow); border: none; color: #fff; padding: 6px 18px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(168, 66, 255, 0.4);">CLOSE</button>
             </div>
         </div>
     </div>
@@ -3632,6 +3946,16 @@
                 <div id="reportContent" class="report-text"></div>
             </div>
             <div class="report-footer" id="reportFooter"></div>
+        </div>
+    </div>
+
+    <!-- ===== TUTORIAL OVERLAY (new) ===== -->
+    <div id="tutorialOverlay" class="tutorial-overlay" style="display: none;">
+        <div class="tutorial-overlay-bg"></div>
+        <div class="tutorial-overlay-content">
+            <button id="tutorialDismissBtn" class="tutorial-dismiss-btn" aria-label="Dismiss tutorial">&times;</button>
+            <img id="hayatoImage" class="hayato-image" src="" alt="Hayato" />
+            <div class="tutorial-overlay-text">Tap anywhere to open tutorial</div>
         </div>
     </div>
 
