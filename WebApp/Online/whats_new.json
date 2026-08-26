@@ -1,5 +1,19 @@
 [
     {
+        "version": "v1.3.0",
+        "logs": [
+            "Added a dedicated comprehensive guide (Hayato's tutorial) with cache support and a trigger button in the settings menu",
+            "Added an additional close button to menu footers for one-handed navigation",
+            "Fixed error images to load correctly based on their error status",
+            "Uses the cached web app version code when fetching sw.js fails (e.g., in offline mode)",
+            "Diagnostic report now detects missing filters case-insensitively",
+            "Added a scroll-down indicator to the settings menu",
+            "Removed the target animation state toward the settings button as we migrated to the new tutorial logic",
+            "'Reduce visual effects' is now called 'Performance mode'",
+            "UI/UX enhancements for Performance mode"
+        ]
+    },
+    {
         "version": "v1.2.2",
         "logs": [
             "Full Details menu info pills can now be clicked to copy their values",
