@@ -109,7 +109,7 @@
             background: rgba(20, 20, 20, 0.4);
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
-            padding: 20px 20px 15px;
+            padding: 20px 20px 8px;
             position: sticky;
             top: 0;
             z-index: 10;
@@ -135,6 +135,93 @@
             width: 100%;
             position: relative;
             max-width: 1000px;
+        }
+
+        /* ----- Status Row (purple dot + item count) ----- */
+        .status-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin: 0;          /* remove top margin */
+            padding: 0;         /* remove all padding */
+            line-height: 1.2;   /* reduce vertical height */
+            width: 100%;
+            max-width: 850px;   /* matches .controls-wrapper max-width */
+            margin-left: auto;
+            margin-right: auto;
+            box-sizing: border-box;
+            /* padding-left removed to align with container left edge */
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: var(--glow);
+            flex-shrink: 0;
+            transition: box-shadow 0.3s ease, opacity 0.3s ease;
+        }
+
+        /* ===== UPDATED STATUS DOT GLOW / ANIMATION ===== */
+        /* Default glow – purple (used by main status dot) */
+        .status-dot.glow {
+            animation: pulse-dot-purple 2s ease-in-out infinite;
+        }
+
+        /* No‑glow state (Performance Mode ON) */
+        .status-dot.no-glow {
+            box-shadow: none;
+            animation: none;
+            opacity: 0.7;
+        }
+
+        /* ---- Mode‑specific glow animations ---- */
+        .status-dot.mode-normal.glow {
+            animation: pulse-dot-green 2s ease-in-out infinite;
+        }
+
+        .status-dot.mode-performance.glow {
+            animation: pulse-dot-red 2s ease-in-out infinite;
+        }
+
+        /* Mode background colors */
+        .status-dot.mode-normal {
+            background-color: #4CAF50; /* green */
+        }
+
+        .status-dot.mode-performance {
+            background-color: #f44336; /* red */
+        }
+
+        /* ---- Keyframes ---- */
+        @keyframes pulse-dot-purple {
+            0%, 100% { box-shadow: 0 0 8px 2px rgba(168, 66, 255, 0.8); }
+            50% { box-shadow: 0 0 14px 4px rgba(168, 66, 255, 0.4); }
+        }
+
+        @keyframes pulse-dot-green {
+            0%, 100% { box-shadow: 0 0 8px 2px rgba(76, 175, 80, 0.8); }
+            50% { box-shadow: 0 0 14px 4px rgba(76, 175, 80, 0.4); }
+        }
+
+        @keyframes pulse-dot-red {
+            0%, 100% { box-shadow: 0 0 8px 2px rgba(244, 67, 54, 0.8); }
+            50% { box-shadow: 0 0 14px 4px rgba(244, 67, 54, 0.4); }
+        }
+
+        /* ---- Performance Mode / reduce-effects: no glow at all ---- */
+        body.reduce-effects .status-dot.glow,
+        .status-dot.no-glow {
+            animation: none !important;
+            box-shadow: none !important;
+            opacity: 0.7;
+        }
+
+        body.reduce-effects .status-dot.glow {
+            opacity: 0.5;
         }
 
         /* ----- ANIMATED PURPLE GRADIENT TITLE ----- */
@@ -286,7 +373,7 @@
             max-width: 850px;
             display: flex;
             flex-direction: column;
-            gap: 14px;
+            gap: 10px;
         }
         /* ----- Report Modal Footer ----- */
         .report-content {
@@ -1872,9 +1959,19 @@
         body.reduce-effects .settings-divider {
             border-bottom-color: #2a2a2a;
         }
-        .settings-section:last-child {
+        .tab-content > .settings-section:last-child {
             margin-bottom: 0;
         }
+        
+        /* Add a 10px bottom gap after the last section in General tab */
+        #tab-general .settings-section:last-child {
+            margin-bottom: 10px !important;
+        }
+        /* Add a 8px bottom gap after the last section in App tab only */
+        #tab-app .settings-section:last-child {
+    margin-bottom: 8px !important;
+        }
+        
         .settings-section h3 {
             font-size: 16px;
             text-transform: uppercase;
@@ -2009,7 +2106,38 @@
         .reduce-effects-row .toggle-status.off {
             color: #777;
         }
-
+        /* Info button for Performance Mode */
+        .info-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s ease, transform 0.2s ease;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+        }
+        body.reduce-effects .info-btn {
+            transition: none;
+        }
+        .info-btn:hover {
+            color: #fff;
+            transform: scale(1.1);
+        }
+        body.reduce-effects .info-btn:hover {
+            transform: none;
+            color: var(--text-muted);
+        }
+        .info-btn:active {
+            transform: scale(0.9);
+        }
+        body.reduce-effects .info-btn:active {
+            transform: none;
+        }
         .action-btn-small {
             background: #252525;
             border: 1px solid var(--border);
@@ -3044,7 +3172,7 @@
         }
 
         .tutorial-dismiss-btn {
-            position: absolute;
+            position: fixed;
             top: 2vh;                 /* 2% from top of container */
             right: 2vw;               /* 2% from right */
             background: rgba(0, 0, 0, 0.6);
@@ -3118,7 +3246,7 @@
         }
 
         /* Settings scroll-down indicator */
-.settings-scroll-down {
+        .settings-scroll-down {
             position: sticky;
             bottom: 2px;
             left: 50%;
@@ -3149,10 +3277,7 @@
             outline: none;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
         }
-        .settings-scroll-down.visible {
-            opacity: 1;
-            pointer-events: auto;
-        }
+    
         .settings-scroll-down:hover {
             background: rgba(40, 40, 40, 0.8);
             color: #fff;
@@ -3175,6 +3300,29 @@
         body.reduce-effects .settings-scroll-down:focus,
         body.reduce-effects .settings-scroll-down:focus-visible {
             box-shadow: none;
+        }
+
+        /* Hide on General & App tabs — removes the bottom gap */
+        .settings-body:has(#tab-general.active) .settings-scroll-down,
+        .settings-body:has(#tab-app.active) .settings-scroll-down {
+            height: 0;
+            overflow: hidden;
+            padding-bottom: 0px;
+            border: none;
+            margin: 0;
+        }
+
+        /* When visible (overflow), show with a solid, visible background */
+        .settings-scroll-down.visible {
+            opacity: 1;
+            pointer-events: auto;
+            height: 30px !important;
+            overflow: visible !important;
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+            background: rgba(30, 30, 30, 0.92) !important;
+            backdrop-filter: blur(8px) !important;
+            -webkit-backdrop-filter: blur(8px) !important;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
         }
 
         /* ----- Responsive / Widescreen ----- */
@@ -3591,6 +3739,18 @@
                     <span id="favCount">0</span>
                 </button>
             </div>
+            <!-- Status Row -->
+            <div class="status-row">
+                <!-- Existing status dot + text -->
+                <span class="status-dot" id="statusDot"></span>
+                <span class="status-text" id="statusText">Showing 0 of 0 items</span>
+
+                <!-- New mode indicator -->
+                <span style="margin-left: 12px; display: flex; align-items: center; gap: 4px;">
+                    <span class="status-dot" id="modeDot"></span>
+                    <span class="status-text" id="modeText">Normal mode</span>
+                </span>
+            </div>
         </div>
     </header>
 
@@ -3741,9 +3901,26 @@
                             </select>
                         </div>
 
+                        <!-- Items per page row -->
+                        <div class="settings-row">
+                            <span class="settings-label">Items per page</span>
+                            <div class="limit-input-group">
+                                <input type="number" id="itemsPerPageInput" class="limit-input" max="9999" value="80">
+                                <span class="limit-unit">items</span>
+                                <button id="itemsPerPageTick" class="action-btn-small icon-only-btn" disabled>
+                                    <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                                </button>
+                            </div>
+                        </div>
+
                         <!-- ===== REDUCE VISUAL EFFECTS TOGGLE ===== -->
                         <div class="reduce-effects-row">
-                            <span class="settings-label">Performance mode</span>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="settings-label">Performance mode</span>
+                                <button id="performanceInfoBtn" class="info-btn" title="Learn more about Performance Mode">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                                </button>
+                            </div>
                             <div class="toggle-wrapper">
                                 <span class="toggle-status" id="reduceEffectsStatus">Off</span>
                                 <label class="toggle-switch">
@@ -3767,7 +3944,7 @@
                                 </button>
                             </div>
                         </div>
-                        <div class="settings-row compact" style="padding-top: 6px; border-bottom: none;">
+                        <div class="settings-row compact" style="padding-top: 6px; padding-bottom: 16px; border-bottom: 1px solid var(--border);">
                             <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
                                 <div class="storage-bar-wrapper">
                                     <div class="storage-bar-fill" id="storageBarFill"></div>
@@ -3779,8 +3956,7 @@
                             </div>
                         </div>
                     </div>
-                    <!-- Divider between Icon storage and Guide -->
-<div class="settings-divider"></div>
+                    
                     <!-- ===== GUIDE SECTION (moved from App tab) ===== -->
                     <div class="settings-section">
                         <h3>User Guide</h3>

@@ -56,6 +56,8 @@ const CONFIG = {
     FALLBACK_TUTORIAL_MD_URL: 'https://cdn.statically.io/gh/AfnanTawsif/ff-catalog@main/WebApp/Online/tutorial.md',
     HAYATO_IMAGE_URL: 'https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/WebApp/Online/hayato.webp',
     FALLBACK_HAYATO_IMAGE_URL: 'https://cdn.statically.io/gh/AfnanTawsif/ff-catalog@main/WebApp/Online/hayato.webp',
+    PERFORMANCE_MODE_IMAGE_URL: 'https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/WebApp/Online/performance-mode.webp',
+    FALLBACK_PERFORMANCE_MODE_IMAGE_URL: 'https://cdn.statically.io/gh/AfnanTawsif/ff-catalog@main/WebApp/Online/performance-mode.webp',
 };
 
 // ================================================================
@@ -81,44 +83,97 @@ function getFallbackUrl(err) {
 }
 
 // --------------------------------------------------------------
-//  HELPER: Fetch with automatic fallback on 403
+//  HELPER: Fetch with automatic fallback on ANY primary error
 // --------------------------------------------------------------
 async function fetchWithFallback(primaryUrl, fallbackUrl, options = {}) {
-    const { timeout = 8000, retryOn403 = true } = options;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
-    try {
-        const response = await fetch(primaryUrl, { signal: controller.signal, ...options });
-        clearTimeout(timeoutId);
-        if (!response.ok) {
-            if (response.status === 403 && retryOn403 && fallbackUrl) {
-                // Try fallback
-                const fallbackController = new AbortController();
-                const fallbackTimeout = setTimeout(() => fallbackController.abort(), timeout);
-                const fallbackResponse = await fetch(fallbackUrl, { signal: fallbackController.signal, ...options });
-                clearTimeout(fallbackTimeout);
-                if (!fallbackResponse.ok) {
-                    const err = new Error(`Fallback failed with ${fallbackResponse.status}`);
-                    err.status = fallbackResponse.status;
-                    throw err;
-                }
-                return fallbackResponse;
-            } else {
-                const err = new Error(`HTTP ${response.status}`);
-                err.status = response.status;
-                throw err;
+    const {
+        timeout = 8000,
+        ...fetchOptions
+    } = options;
+
+    async function fetchWithTimeout(url) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+        try {
+            const response = await fetch(url, {
+                ...fetchOptions,
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+            return response;
+        } catch (err) {
+            clearTimeout(timeoutId);
+
+            if (err.name === 'AbortError') {
+                const timeoutErr = new Error('Request timed out');
+                timeoutErr.status = 0;
+                throw timeoutErr;
             }
+
+            const networkErr = new Error(`Network error: ${err.message}`);
+            networkErr.status = 0;
+            throw networkErr;
         }
-        return response;
-    } catch (err) {
-        clearTimeout(timeoutId);
-        if (err.name === 'AbortError') {
-            const abortErr = new Error('Request timed out');
-            abortErr.status = 0;
-            throw abortErr;
-        }
-        throw err;
     }
+
+    let primaryError = null;
+
+    // ----------------------------------------------------------
+    // 1. Try primary CDN
+    // ----------------------------------------------------------
+    try {
+        const response = await fetchWithTimeout(primaryUrl);
+
+        if (response.ok) {
+            return response;
+        }
+
+        primaryError = new Error(`HTTP ${response.status}`);
+        primaryError.status = response.status;
+    } catch (err) {
+        primaryError = err;
+    }
+
+    // ----------------------------------------------------------
+    // 2. Primary failed → ALWAYS try fallback CDN
+    // ----------------------------------------------------------
+    if (fallbackUrl) {
+        try {
+            const fallbackResponse = await fetchWithTimeout(fallbackUrl);
+
+            if (fallbackResponse.ok) {
+                return fallbackResponse;
+            }
+
+            // Fallback itself failed.
+            // Keep the ORIGINAL primary error for final error handling.
+            const fallbackError = new Error(
+                `Fallback CDN failed with HTTP ${fallbackResponse.status}`
+            );
+            fallbackError.status = fallbackResponse.status;
+            fallbackError.primaryError = primaryError;
+
+            throw fallbackError;
+        } catch (fallbackErr) {
+            console.warn(
+                'Primary CDN failed; fallback CDN also failed.',
+                {
+                    primaryError,
+                    fallbackError: fallbackErr
+                }
+            );
+
+            // IMPORTANT:
+            // The final error classification is based on the
+            // ORIGINAL primary CDN error, not the fallback error.
+            throw primaryError;
+        }
+    }
+
+    // No fallback URL available.
+    throw primaryError;
 }
 
 // --------------------------------------------------------------
@@ -296,12 +351,13 @@ if ('serviceWorker' in navigator) {
 // --------------------------------------------------------------
 let allItems = [];
 let filteredItems = [];
+let totalItemsCount = 0;   // total number of items in the database (set after parse)
 let itemsById = new Map();
 let metadataObj = null;
 let rawDbUpdatedOnText = "Unknown";
 let dbUpdatedOnText = "Unknown";
 let currentPage = 1;
-const ITEMS_PER_PAGE = 80;
+let ITEMS_PER_PAGE = 80;   // now mutable
 let totalPages = 1;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -428,6 +484,57 @@ function updateFavUI() {
 }
 
 // --------------------------------------------------------------
+//  STATUS BAR UPDATE
+// --------------------------------------------------------------
+function updateStatusBar() {
+    const dot = document.getElementById('statusDot');
+    const text = document.getElementById('statusText');
+    if (!dot || !text) return;
+    const filtered = filteredItems.length;
+    const total = totalItemsCount;
+    text.textContent = `Showing ${filtered} of ${total} items`;
+    // Update dot glow based on Performance Mode state
+    const isReduced = document.body.classList.contains('reduce-effects');
+    if (isReduced) {
+        dot.classList.remove('glow');
+        dot.classList.add('no-glow');
+    } else {
+        dot.classList.remove('no-glow');
+        dot.classList.add('glow');
+    }
+}
+
+// --------------------------------------------------------------
+//  MODE INDICATOR UPDATE
+// --------------------------------------------------------------
+function updateModeIndicator() {
+    const dot = document.getElementById('modeDot');
+    const text = document.getElementById('modeText');
+    if (!dot || !text) return;
+
+    const isReduced = document.body.classList.contains('reduce-effects');
+    const isPerformance = reduceEffectsToggle.checked; // same as isReduced
+
+    // Set color class and text
+    if (isPerformance) {
+        dot.className = 'status-dot mode-performance';
+        text.textContent = 'Performance mode';
+    } else {
+        dot.className = 'status-dot mode-normal';
+        text.textContent = 'Normal mode';
+    }
+
+    // Apply glow/no‑glow based on reduce‑effects state (same as main status dot)
+    if (isReduced) {
+        dot.classList.add('no-glow');
+        dot.classList.remove('glow');
+    } else {
+        dot.classList.remove('no-glow');
+        dot.classList.add('glow');
+    }
+}
+
+// --------------------------------------------------------------
 //  DOM REFS
 // --------------------------------------------------------------
 const grid = document.getElementById('itemGrid');
@@ -462,6 +569,9 @@ const iconLimitTick = document.getElementById('iconLimitTick');
 const storageBarFill = document.getElementById('storageBarFill');
 const storageBarText = document.getElementById('storageBarText');
 const cleanStorageBtn = document.getElementById('cleanStorageBtn');
+
+const itemsPerPageInput = document.getElementById('itemsPerPageInput');
+const itemsPerPageTick = document.getElementById('itemsPerPageTick');
 
 const modalShareBtn = document.getElementById('modalShareBtn');
 
@@ -498,6 +608,29 @@ searchClear.addEventListener('click', function() {
 
 searchClear.style.display = 'none';
 searchIcon.style.display = 'flex';
+
+// ================================================================
+//  FIX #1: Enter key closes keyboard and returns to top instantly
+// ================================================================
+searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+
+        // Remove focus from the search field.
+        searchInput.blur();
+
+        // Extra safety for mobile browsers that keep the active element focused.
+        if (document.activeElement === searchInput) {
+            document.activeElement.blur();
+        }
+
+        // Let the browser process the blur/keyboard dismissal first,
+        // then ensure the catalog remains at the top.
+        requestAnimationFrame(() => {
+            window.scrollTo({ top: 0, behavior: 'auto' });
+        });
+    }
+});
 
 // --------------------------------------------------------------
 //  DATE FORMATTING
@@ -780,7 +913,7 @@ async function loadAuthorImageWithCache() {
     if (shouldRefresh) {
         try {
             loader.classList.remove('hidden');
-            const response = await fetchWithFallback(fetchUrlPrimary, fetchUrlFallback, { timeout: 10000 });
+            const response = await fetchWithFallback(fetchUrlPrimary, fetchUrlFallback, { timeout: 15000 });
             const blob = await response.blob();
             const objectUrl = URL.createObjectURL(blob);
             img.src = objectUrl;
@@ -955,7 +1088,18 @@ function forceHideModal(id) {
             if (content) {
                 content.classList.remove('tutorial-mode', 'whatsnew-mode');
             }
+            // ---- Clean up performance image object URL ----
+            const perfImg = document.getElementById('perfImage');
+            if (perfImg && perfImg.dataset.objectUrl) {
+                URL.revokeObjectURL(perfImg.dataset.objectUrl);
+                delete perfImg.dataset.objectUrl;
+                perfImg.src = '';
+                perfImg.style.display = 'none';
+            }
+            const spinner = document.getElementById('perfSpinner');
+            if (spinner) spinner.style.display = 'block';
         }
+        
         if (id === 'settingsModal') {
             const body = document.querySelector('.settings-body');
             if (body) {
@@ -2019,6 +2163,18 @@ function loadSettings() {
     if (localStorage.getItem('downloadAs')) downloadAs.value = localStorage.getItem('downloadAs');
 
     iconLimitInput.value = localStorage.getItem('iconLimitMB') || '15';
+    
+    // Load items per page
+    const storedItemsPerPage = localStorage.getItem('itemsPerPage');
+    if (storedItemsPerPage !== null) {
+        const val = parseInt(storedItemsPerPage, 10);
+        if (!isNaN(val) && val > 0) {
+            ITEMS_PER_PAGE = val;
+        }
+    }
+    itemsPerPageInput.value = ITEMS_PER_PAGE;
+    itemsPerPageTick.disabled = true;
+
     updateSearchHint();
 
     const savedReduceEffects = localStorage.getItem('reduceEffects') === 'true';
@@ -2034,6 +2190,7 @@ function saveSettings() {
     localStorage.setItem('clickAction', clickAction.value);
     localStorage.setItem('downloadAs', downloadAs.value);
     localStorage.setItem('reduceEffects', String(reduceEffectsToggle.checked));
+    localStorage.setItem('itemsPerPage', String(ITEMS_PER_PAGE));
 }
 
 // --------------------------------------------------------------
@@ -2050,6 +2207,8 @@ function applyReduceEffects(enabled) {
         reduceEffectsStatus.textContent = 'Off';
         reduceEffectsStatus.className = 'toggle-status off';
     }
+    // Update the mode indicator (dot + text)
+    updateModeIndicator();
 }
 
 reduceEffectsToggle.addEventListener('change', function() {
@@ -2057,6 +2216,9 @@ reduceEffectsToggle.addEventListener('change', function() {
     applyReduceEffects(enabled);
     localStorage.setItem('reduceEffects', String(enabled));
     saveSettings();
+    updateStatusBar();  // Update dot glow
+    // Update mode indicator (already called inside applyReduceEffects, but keep for safety)
+    updateModeIndicator();
 });
 
 [rangeName, rangeID, rangeDesc, rangeIcon].forEach(cb => cb.addEventListener('change', () => {
@@ -2253,6 +2415,38 @@ function recordImageSize(bytes) {
 }
 
 // --------------------------------------------------------------
+//  ITEMS PER PAGE LOGIC
+// --------------------------------------------------------------
+itemsPerPageInput.addEventListener('input', function() {
+    if (this.value.length > 4) this.value = this.value.slice(0, 4);
+    const val = parseInt(this.value, 10);
+    if (!isNaN(val) && val > 0 && val !== ITEMS_PER_PAGE) {
+        itemsPerPageTick.disabled = false;
+    } else {
+        itemsPerPageTick.disabled = true;
+    }
+});
+
+itemsPerPageInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !itemsPerPageTick.disabled) {
+        itemsPerPageTick.click();
+    }
+});
+
+itemsPerPageTick.addEventListener('click', () => {
+    let val = parseInt(itemsPerPageInput.value, 10);
+    if (isNaN(val) || val < 1) val = 80;
+    ITEMS_PER_PAGE = val;
+    localStorage.setItem('itemsPerPage', String(ITEMS_PER_PAGE));
+    itemsPerPageInput.value = ITEMS_PER_PAGE;
+    itemsPerPageTick.disabled = true;
+    // Reset to first page and re-render
+    currentPage = 1;
+    applyFilters();
+    showToast(`Items per page set to ${ITEMS_PER_PAGE}`);
+});
+
+// --------------------------------------------------------------
 //  INDEXEDDB HELPER
 // --------------------------------------------------------------
 const DB_NAME = 'FF_Catalog_Storage';
@@ -2306,20 +2500,26 @@ async function saveLocalCache(rawData) {
 }
 
 // ================================================================
-//  🖼️  ROBUST IMAGE LOADER WITH FALLBACK CDN ON 403
+//  🖼️  ROBUST IMAGE LOADER WITH FALLBACK CDN ON ANY ERROR
 // ================================================================
 async function loadImageWithRetry(url) {
     const CACHE_TIMEOUT = 2000;
     const RETRY_DELAY = 500;
-    const TOTAL_TIMEOUT = 10000;
+    const TOTAL_TIMEOUT = 20000;
 
     async function attemptCache(url) {
         try {
             const cache = await caches.open('ff-icons');
             const response = await cache.match(url);
+
             if (!response) return null;
+
             const blob = await response.blob();
-            if (blob && blob.size > 0) return blob;
+
+            if (blob && blob.size > 0) {
+                return blob;
+            }
+
             return null;
         } catch (_) {
             return null;
@@ -2329,8 +2529,12 @@ async function loadImageWithRetry(url) {
     async function fetchWithTimeout(url, timeout) {
         const controller = new AbortController();
         const id = setTimeout(() => controller.abort(), timeout);
+
         try {
-            const response = await fetch(url, { signal: controller.signal });
+            const response = await fetch(url, {
+                signal: controller.signal
+            });
+
             clearTimeout(id);
             return response;
         } catch (err) {
@@ -2339,67 +2543,163 @@ async function loadImageWithRetry(url) {
         }
     }
 
-    async function networkFetchWithFallback(primaryUrl) {
-        let response;
+    async function networkFetchWithFallback(primaryUrl, fallbackUrl) {
+        let primaryError = null;
+
+        // ----------------------------------------------------------
+        // 1. Try jsDelivr
+        // ----------------------------------------------------------
         try {
-            response = await fetchWithTimeout(primaryUrl, 8000);
+            const response = await fetchWithTimeout(primaryUrl, 15000);
+
+            if (response.ok) {
+                return response;
+            }
+
+            primaryError = new Error(
+                `Primary CDN returned HTTP ${response.status}`
+            );
+            primaryError.status = response.status;
+
         } catch (err) {
-            const netErr = new Error('Network error: ' + err.message);
-            netErr.status = 0;
-            throw netErr;
-        }
-
-        if (response.ok) {
-            return response;
-        }
-
-        if (response.status === 403) {
-            const fallbackUrl = primaryUrl.replace(CONFIG.CDN_BASE_URL, CONFIG.FALLBACK_CDN_BASE_URL);
-            try {
-                const fallbackResponse = await fetchWithTimeout(fallbackUrl, 5000);
-                if (fallbackResponse.ok) {
-                    return fallbackResponse;
-                }
-                const err = new Error(`Fallback CDN returned ${fallbackResponse.status}`);
-                err.status = fallbackResponse.status;
-                throw err;
-            } catch (fallbackErr) {
-                const err = new Error(`Primary CDN 403 and fallback failed: ${fallbackErr.message}`);
-                err.status = 403;
-                throw err;
+            if (err.name === 'AbortError') {
+                primaryError = new Error('Primary CDN request timed out');
+                primaryError.status = 0;
+            } else {
+                primaryError = new Error(
+                    `Primary CDN network error: ${err.message}`
+                );
+                primaryError.status = 0;
             }
         }
 
-        const err = new Error(`Network fetch failed: ${response.status}`);
-        err.status = response.status;
-        throw err;
+        // ----------------------------------------------------------
+        // 2. Primary failed → ALWAYS try Statically
+        // ----------------------------------------------------------
+        if (fallbackUrl) {
+            try {
+                const fallbackResponse = await fetchWithTimeout(
+                    fallbackUrl,
+                    8000
+                );
+
+                if (fallbackResponse.ok) {
+                    return fallbackResponse;
+                }
+
+                console.warn(
+                    `Fallback CDN returned HTTP ${fallbackResponse.status}`
+                );
+
+            } catch (fallbackErr) {
+                console.warn(
+                    'Fallback CDN network error:',
+                    fallbackErr
+                );
+            }
+        }
+
+        // ----------------------------------------------------------
+        // 3. BOTH failed
+        //
+        // Preserve the PRIMARY error because the final error image
+        // must represent the error that caused the fallback.
+        // ----------------------------------------------------------
+        throw primaryError;
     }
 
     const overallTimeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('loadImageWithRetry total timeout')), TOTAL_TIMEOUT)
+        setTimeout(() => {
+            const err = new Error(
+                'Image loading timed out'
+            );
+            err.status = 0;
+            reject(err);
+        }, TOTAL_TIMEOUT)
     );
 
     try {
         const result = await Promise.race([
             (async () => {
-                let blob = await withTimeout(attemptCache(url), CACHE_TIMEOUT);
-                if (blob) return { blob, fromCache: true };
 
-                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-                blob = await withTimeout(attemptCache(url), CACHE_TIMEOUT);
-                if (blob) return { blob, fromCache: true };
+                // --------------------------------------------------
+                // Cache attempt #1
+                // --------------------------------------------------
+                let blob = await withTimeout(
+                    attemptCache(url),
+                    CACHE_TIMEOUT
+                );
 
-                const response = await networkFetchWithFallback(url);
+                if (blob) {
+                    return {
+                        blob,
+                        fromCache: true
+                    };
+                }
+
+                // --------------------------------------------------
+                // Small delay before second cache attempt
+                // --------------------------------------------------
+                await new Promise(resolve =>
+                    setTimeout(resolve, RETRY_DELAY)
+                );
+
+                // --------------------------------------------------
+                // Cache attempt #2
+                // --------------------------------------------------
+                blob = await withTimeout(
+                    attemptCache(url),
+                    CACHE_TIMEOUT
+                );
+
+                if (blob) {
+                    return {
+                        blob,
+                        fromCache: true
+                    };
+                }
+
+                // --------------------------------------------------
+                // Network:
+                // jsDelivr → Statically on ANY error
+                // --------------------------------------------------
+                const fallbackUrl = url.replace(
+                    CONFIG.CDN_BASE_URL,
+                    CONFIG.FALLBACK_CDN_BASE_URL
+                );
+
+                const response = await networkFetchWithFallback(
+                    url,
+                    fallbackUrl
+                );
+
                 const cache = await caches.open('ff-icons');
+
                 const clonedResponse = response.clone();
+
                 cache.put(url, clonedResponse).catch(() => {});
+
                 const dataBlob = await response.blob();
-                if (!dataBlob || dataBlob.size === 0) throw new Error('Empty blob from network');
-                return { blob: dataBlob, fromCache: false };
+
+                if (!dataBlob || dataBlob.size === 0) {
+                    const emptyBlobError = new Error(
+                        'Empty blob from CDN'
+                    );
+                    emptyBlobError.status = 0;
+                    throw emptyBlobError;
+                }
+
+                return {
+                    blob: dataBlob,
+                    fromCache: false
+                };
             })(),
+
             overallTimeout
         ]);
+
         return result;
+
     } catch (err) {
         throw err;
     }
@@ -2528,7 +2828,10 @@ function parseAndSetDatabase(uint8Array) {
 
         populateTagFilter(allItems);
 
+        totalItemsCount = allItems.length;
         applyFilters();
+        updateStatusBar(); // update total and dot
+
         return true;
     } catch (err) {
         console.error("Parsing Msgpack error:", err);
@@ -2648,6 +2951,7 @@ async function initDatabase(forceSync = false) {
         document.getElementById('dbVersionUI').textContent = rawDbUpdatedOnText;
 
         populateTagFilter(allItems);
+        totalItemsCount = allItems.length;
 
         await saveLocalCache(rawData);
 
@@ -2671,6 +2975,7 @@ async function initDatabase(forceSync = false) {
         }
 
         applyFilters();
+        updateStatusBar(); // ensure total is shown
     } catch (err) {
         console.warn("Failed to fetch fresh database:", err);
         if (forceSync) showToast("Database offline");
@@ -2752,8 +3057,16 @@ function applyFilters() {
 
     totalPagesUI.textContent = totalPages;
 
+    updateStatusBar(); // update filtered count
+
     renderPage();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Always return to the top after a search/filter change.
+    // Use instant scrolling so mobile keyboard viewport changes
+    // cannot fight against a smooth-scroll animation.
+    requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, behavior: 'auto' });
+    });
 
     updateFavUI();
 }
@@ -2847,11 +3160,23 @@ function renderPage(direction) {
     }
 }
 
+// ================================================================
+//  FIX #2: Pagination scrolling – horizontal only, no vertical
+// ================================================================
 function scrollPaginationToActive() {
     const activeBtn = pageNumbersEl.querySelector('.page-btn.active');
-    if (activeBtn) {
-        activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-    }
+    if (!activeBtn) return;
+
+    // Horizontally center the active page button WITHOUT
+    // allowing the browser to vertically scroll the document.
+    const targetScrollLeft =
+        activeBtn.offsetLeft -
+        (pageNumbersEl.clientWidth - activeBtn.offsetWidth) / 2;
+
+    pageNumbersEl.scrollTo({
+        left: Math.max(0, targetScrollLeft),
+        behavior: 'smooth'
+    });
 }
 
 function buildItemCards(items) {
@@ -3084,11 +3409,8 @@ function goToPage(pageNum) {
 
     updatePaginationUI();
     scrollPaginationToActive();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    const activeBtn = pageNumbersEl.children[pageNum - 1];
-    if (activeBtn) {
-        activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-    }
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    // No extra scrollIntoView – pagination only horizontal
 }
 
 document.getElementById('btnPrev').addEventListener('click', () => {
@@ -3387,7 +3709,7 @@ async function loadHayatoImage() {
         const response = await fetchWithFallback(
             url + '?nocache=' + Date.now(),
             fallbackUrl + '?nocache=' + Date.now(),
-            { timeout: 10000 }
+            { timeout: 15000 }
         );
         const blob = await response.blob();
         if (cache) {
@@ -3411,7 +3733,7 @@ async function refreshHayatoInBackground() {
         const response = await fetchWithFallback(
             CONFIG.HAYATO_IMAGE_URL + '?nocache=' + Date.now(),
             CONFIG.FALLBACK_HAYATO_IMAGE_URL + '?nocache=' + Date.now(),
-            { timeout: 10000 }
+            { timeout: 15000 }
         );
         const blob = await response.blob();
         const cache = await caches.open('ff-tutorial-images');
@@ -3543,6 +3865,143 @@ async function openTutorialModal() {
     }
 }
 
+// ----- Performance Mode Info Modal -----
+async function openPerformanceModeModal() {
+    const modal = document.getElementById('reportModal');
+    const title = document.getElementById('reportTitle');
+    const content = document.getElementById('reportContent');
+    const footer = document.getElementById('reportFooter');
+
+    // Remove any existing mode classes, ensure it's clean
+    content.classList.remove('whatsnew-mode', 'tutorial-mode');
+
+    title.textContent = 'Performance Mode';
+    content.innerHTML = `
+        <div style="padding: 4px 0 0px 0;">
+            <p style="color: #ddd; font-size: 14px; line-height: 1.6; margin-bottom: 10px;">
+                Heavily reduces visual effects and animations to achieve the best possible responsiveness.
+                This improves performance on lower‑end devices and reduces battery usage.
+            </p>
+            <div class="performance-image-wrapper" style="display: flex; justify-content: center; align-items: center; min-height: 80px;">
+                <div class="tutorial-image-spinner" id="perfSpinner"></div>
+                <img id="perfImage" class="tutorial-image" alt="Performance Mode illustration" style="display: none;" />
+            </div>
+        </div>
+    `;
+    footer.innerHTML = `
+        <button class="whatsnew-close-btn" onclick="closeModal('reportModal')" style="background: var(--glow); border: none; color: #fff; padding: 6px 18px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(168, 66, 255, 0.4);">
+            CLOSE
+        </button>
+    `;
+
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    if (!activeModalStack.includes('reportModal')) {
+        activeModalStack.push('reportModal');
+    }
+
+    // Load the performance image
+    loadPerformanceModeImage();
+}
+
+// ----- Load Performance Mode Image (cache-first, fallback) -----
+async function loadPerformanceModeImage() {
+    const img = document.getElementById('perfImage');
+    const spinner = document.getElementById('perfSpinner');
+    if (!img || !spinner) return;
+
+    const url = CONFIG.PERFORMANCE_MODE_IMAGE_URL;
+    const fallbackUrl = CONFIG.FALLBACK_PERFORMANCE_MODE_IMAGE_URL;
+    const cacheName = 'ff-performance-image';
+    const cacheKey = 'performance-mode';
+
+    let cachedBlob = null;
+    let cache = null;
+
+    // 1. Try to get from cache
+    try {
+        cache = await caches.open(cacheName);
+        const cachedResponse = await cache.match(cacheKey);
+        if (cachedResponse) {
+            cachedBlob = await cachedResponse.blob();
+        }
+    } catch (e) { /* ignore */ }
+
+    // 2. If cached, use it immediately and refresh in background
+    if (cachedBlob) {
+        const objectUrl = URL.createObjectURL(cachedBlob);
+        img.src = objectUrl;
+        img.dataset.objectUrl = objectUrl;
+        img.style.display = 'block';
+        spinner.style.display = 'none';
+        img.onload = () => img.classList.add('loaded');
+        img.onerror = () => img.classList.add('loaded');
+        if (img.complete && img.naturalWidth > 0) {
+            img.classList.add('loaded');
+        }
+        refreshPerformanceImageInBackground();
+        return;
+    }
+
+    // 3. No cache – fetch fresh and wait
+    try {
+        const response = await fetchWithFallback(
+            url + '?nocache=' + Date.now(),
+            fallbackUrl + '?nocache=' + Date.now(),
+            { timeout: 15000 }
+        );
+        const blob = await response.blob();
+        if (cache) {
+            await cache.put(cacheKey, new Response(blob));
+        }
+        const objectUrl = URL.createObjectURL(blob);
+        img.src = objectUrl;
+        img.dataset.objectUrl = objectUrl;
+        img.style.display = 'block';
+        spinner.style.display = 'none';
+        img.onload = () => img.classList.add('loaded');
+        img.onerror = () => img.classList.add('loaded');
+        if (img.complete && img.naturalWidth > 0) {
+            img.classList.add('loaded');
+        }
+    } catch (err) {
+        console.warn('Failed to fetch Performance Mode image:', err);
+        spinner.style.display = 'none';
+        img.style.display = 'block';
+        img.alt = 'Performance Mode illustration (failed to load)';
+        img.src = '';
+        img.classList.add('loaded');
+    }
+}
+
+// Refresh performance image in background without blocking
+async function refreshPerformanceImageInBackground() {
+    try {
+        const response = await fetchWithFallback(
+            CONFIG.PERFORMANCE_MODE_IMAGE_URL + '?nocache=' + Date.now(),
+            CONFIG.FALLBACK_PERFORMANCE_MODE_IMAGE_URL + '?nocache=' + Date.now(),
+            { timeout: 15000 }
+        );
+        const blob = await response.blob();
+        const cache = await caches.open('ff-performance-image');
+        await cache.put('performance-mode', new Response(blob));
+
+        const img = document.getElementById('perfImage');
+        const modal = document.getElementById('reportModal');
+        if (img && modal && !modal.classList.contains('hidden')) {
+            const objectUrl = URL.createObjectURL(blob);
+            if (img.dataset.objectUrl) URL.revokeObjectURL(img.dataset.objectUrl);
+            img.src = objectUrl;
+            img.dataset.objectUrl = objectUrl;
+            img.onload = () => img.classList.add('loaded');
+            img.onerror = () => img.classList.add('loaded');
+            if (img.complete && img.naturalWidth > 0) {
+                img.classList.add('loaded');
+            }
+        }
+    } catch (_) { /* ignore */ }
+}
+
 async function fetchTutorialMarkdown() {
     const cache = await caches.open('ff-tutorial');
     const cacheKey = CONFIG.TUTORIAL_MD_URL;
@@ -3594,9 +4053,6 @@ function parseTutorialMarkdown(md) {
                 html += '</ul>';
                 inList = false;
             }
-            // Optionally add a line break for empty lines outside lists
-            // (uncomment if you want empty lines to become <br> as well)
-            // html += '<br>';
             continue;
         }
 
@@ -3730,7 +4186,7 @@ async function loadTutorialImages(container) {
 async function loadImageWithRetryForTutorial(url, fallbackUrl) {
     const CACHE_TIMEOUT = 2000;
     const RETRY_DELAY = 500;
-    const TOTAL_TIMEOUT = 10000;
+    const TOTAL_TIMEOUT = 20000;
 
     async function attemptCache(url) {
         try {
@@ -3756,32 +4212,71 @@ async function loadImageWithRetryForTutorial(url, fallbackUrl) {
         }
     }
 
+    // --------------------------------------------------------------
+    //  REPLACED internal networkFetchWithFallback – tries fallback on ANY error
+    // --------------------------------------------------------------
     async function networkFetchWithFallback(primaryUrl, fallbackUrl) {
-        let response;
+        let primaryError = null;
+
+        // ----------------------------------------------------------
+        // 1. Try primary CDN
+        // ----------------------------------------------------------
         try {
-            response = await fetchWithTimeout(primaryUrl, 8000);
+            const response = await fetchWithTimeout(primaryUrl, 15000);
+
+            if (response.ok) {
+                return response;
+            }
+
+            primaryError = new Error(
+                `Primary CDN returned HTTP ${response.status}`
+            );
+            primaryError.status = response.status;
+
         } catch (err) {
-            const netErr = new Error('Network error: ' + err.message);
-            netErr.status = 0;
-            throw netErr;
+            if (err.name === 'AbortError') {
+                primaryError = new Error(
+                    'Primary CDN request timed out'
+                );
+            } else {
+                primaryError = new Error(
+                    `Primary CDN network error: ${err.message}`
+                );
+            }
+
+            primaryError.status = 0;
         }
-        if (response.ok) return response;
-        if (response.status === 403 && fallbackUrl) {
+
+        // ----------------------------------------------------------
+        // 2. ALWAYS try Statically after ANY primary error
+        // ----------------------------------------------------------
+        if (fallbackUrl) {
             try {
-                const fallbackResponse = await fetchWithTimeout(fallbackUrl, 5000);
-                if (fallbackResponse.ok) return fallbackResponse;
-                const err = new Error(`Fallback CDN returned ${fallbackResponse.status}`);
-                err.status = fallbackResponse.status;
-                throw err;
+                const fallbackResponse = await fetchWithTimeout(
+                    fallbackUrl,
+                    8000
+                );
+
+                if (fallbackResponse.ok) {
+                    return fallbackResponse;
+                }
+
+                console.warn(
+                    `Tutorial fallback CDN returned HTTP ${fallbackResponse.status}`
+                );
+
             } catch (fallbackErr) {
-                const err = new Error(`Primary CDN 403 and fallback failed: ${fallbackErr.message}`);
-                err.status = 403;
-                throw err;
+                console.warn(
+                    'Tutorial fallback CDN network error:',
+                    fallbackErr
+                );
             }
         }
-        const err = new Error(`Network fetch failed: ${response.status}`);
-        err.status = response.status;
-        throw err;
+
+        // ----------------------------------------------------------
+        // 3. Both failed → preserve PRIMARY error
+        // ----------------------------------------------------------
+        throw primaryError;
     }
 
     const overallTimeout = new Promise((_, reject) =>
@@ -3884,6 +4379,12 @@ window.addEventListener('DOMContentLoaded', async () => {
     // ---- ADDED: close settings modal via footer button ----
     document.getElementById('settingsCloseBtn')?.addEventListener('click', () => {
         closeModal('settingsModal');
+    });
+
+    // ---- ADDED: Performance Mode info button ----
+    document.getElementById('performanceInfoBtn')?.addEventListener('click', function(e) {
+        e.stopPropagation();
+        openPerformanceModeModal();
     });
 });
 
