@@ -29,6 +29,7 @@ The app checks for a new database every 24 hours, and you can force a sync anyti
   - 'Performance mode' option for best performance (less visual effects) on weak devices.
   - Uses WEBP instead of PNG for faster loads.
   - Uses msgpack instead of json for maximum reading speed.
+  - Caches WebApp elements, item icons (within storage limit set by user), images & parsed database for fastest loading speed.
   - Lazy-loads images & animations only for items on current page.
   - Uses a **Web Worker** to parse the MessagePack database off the main thread – no UI jank.
   - Decompression (`DecompressionStream`) is hardware-accelerated in modern browsers.
@@ -41,7 +42,7 @@ The app checks for a new database every 24 hours, and you can force a sync anyti
 **📡 Bandwidth & Server-Cost Friendly**
   - All static assets (icons, database) are served via **jsDelivr CDN**, leveraging global edge caching & falls back to **Statically CDN** when jsDelivr fails- ensuring almost 100% uptime.
   - The app itself is hosted on Netlify, but because almost everything runs on the client, your Netlify credits are barely consumed.
-  - Service Worker updates pull new versions only when `sw.js` changes – no unnecessary network requests.
+  - Service Worker updates pull new WebApp version only when `sw.js` changes, CDN loads images only when not found in cache – no unnecessary network requests are made!
 
 **🎨 Beautiful & Responsive UI**
   - Glass-morphism design with animated gradients. (can be turned off in settings)
@@ -63,7 +64,7 @@ The app checks for a new database every 24 hours, and you can force a sync anyti
   - Multi-page layout with pagination bar as overlay for fast navigation.
 
 **⚙️ Rich Settings**
-  - Customize search scope, click action, download naming, icon storage limit, and more.
+  - Customize search scope, click action, download naming, icon storage limit, items per page and more.
   - Analyze database statistics, duplicated items, missing filters, and missing icons.
   - One-click update check and version changelog.
 
