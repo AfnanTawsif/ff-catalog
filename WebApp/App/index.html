@@ -140,19 +140,25 @@
         /* ----- Status Row (purple dot + item count) ----- */
         .status-row {
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            gap: 6px;
             font-size: 12px;
             color: var(--text-muted);
-            margin: 0;          /* remove top margin */
-            padding: 0;         /* remove all padding */
-            line-height: 1.2;   /* reduce vertical height */
+            margin: 0;
+            padding: 0;
+            line-height: 1.2;
             width: 100%;
-            max-width: 850px;   /* matches .controls-wrapper max-width */
+            max-width: 850px;
             margin-left: auto;
             margin-right: auto;
             box-sizing: border-box;
-            /* padding-left removed to align with container left edge */
+        }
+
+        .status-left,
+        .status-right {
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
         .status-dot {
@@ -1278,7 +1284,7 @@
         /* ----- Floating Slider Pagination ----- */
         .pagination-container {
             position: fixed;
-            bottom: 20px;
+            bottom: 2.22vh;
             left: 50%;
             transform: translateX(-50%);
             z-index: 50;
@@ -3741,15 +3747,14 @@
             </div>
             <!-- Status Row -->
             <div class="status-row">
-                <!-- Existing status dot + text -->
-                <span class="status-dot" id="statusDot"></span>
-                <span class="status-text" id="statusText">Showing 0 of 0 items</span>
-
-                <!-- New mode indicator -->
-                <span style="margin-left: 12px; display: flex; align-items: center; gap: 4px;">
+                <div class="status-left">
+                    <span class="status-dot" id="statusDot"></span>
+                    <span class="status-text" id="statusText">Showing 0 of 0 items</span>
+                </div>
+                <div class="status-right">
                     <span class="status-dot" id="modeDot"></span>
                     <span class="status-text" id="modeText">Normal mode</span>
-                </span>
+                </div>
             </div>
         </div>
     </header>

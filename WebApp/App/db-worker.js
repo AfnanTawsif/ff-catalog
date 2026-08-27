@@ -28,9 +28,9 @@ self.addEventListener('message', async (e) => {
                 items = [];
             }
 
+            // rawData is intentionally omitted – it is no longer used by the main thread
             self.postMessage({
                 type: 'success',
-                rawData,
                 items,
                 updatedOn
             });

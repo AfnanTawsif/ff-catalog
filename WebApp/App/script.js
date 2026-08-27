@@ -25,23 +25,23 @@ const CONFIG = {
     WEBSITE_URL: '',
     CDN_BASE_URL: 'https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/Item-webp/',
     FALLBACK_CDN_BASE_URL: 'https://cdn.statically.io/gh/AfnanTawsif/ff-catalog@main/Item-webp/',
-    
+
     DATABASE_URL: 'https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/database.msgpack.gz',
     FALLBACK_DATABASE_URL: 'https://cdn.statically.io/gh/AfnanTawsif/ff-catalog@main/database.msgpack.gz',
-    
+
     WHATS_NEW_URL: 'https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/WebApp/Online/whats_new.json',
     FALLBACK_WHATS_NEW_URL: 'https://cdn.statically.io/gh/AfnanTawsif/ff-catalog@main/WebApp/Online/whats_new.json',
-    
+
     AUTHOR_IMAGE_URL: 'https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/WebApp/Online/author.jpg',
     FALLBACK_AUTHOR_IMAGE_URL: 'https://cdn.statically.io/gh/AfnanTawsif/ff-catalog@main/WebApp/Online/author.jpg',
-    
+
     FALLBACK_IMAGE_URL: 'icons/error.webp',
     ERROR_403_IMAGE_URL: 'icons/error-403.webp',
     NETWORK_ERROR_IMAGE_URL: 'icons/network-error.webp',
-    
+
     GITHUB_REPO_URL: 'https://github.com/AfnanTawsif/ff-catalog',
     GITHUB_API_TREE_URL: 'https://api.github.com/repos/AfnanTawsif/ff-catalog/git/trees/main?recursive=1',
-    
+
     CONTACT: {
         facebook: 'https://www.facebook.com/not.tawsif',
         instagram: 'https://www.instagram.com/_hey_tawsif_',
@@ -49,7 +49,6 @@ const CONFIG = {
         devName: 'AfnanTawsif'
     },
 
-    // NEW for Tutorial
     ONLINE_BASE_URL: 'https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/WebApp/Online/',
     FALLBACK_ONLINE_BASE_URL: 'https://cdn.statically.io/gh/AfnanTawsif/ff-catalog@main/WebApp/Online/',
     TUTORIAL_MD_URL: 'https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/WebApp/Online/tutorial.md',
@@ -69,16 +68,13 @@ const CONFIG = {
 // --------------------------------------------------------------
 function getFallbackUrl(err) {
     const status = (typeof err === 'number') ? err : (err.status || 0);
-    
-    // Specific status codes
+
     if (status === 403) {
         return CONFIG.ERROR_403_IMAGE_URL;
     }
     if (status === 0) {
-        // Network error, aborted request, or timeout
         return CONFIG.NETWORK_ERROR_IMAGE_URL;
     }
-    // All other statuses (404, 500, etc.) → generic fallback
     return CONFIG.FALLBACK_IMAGE_URL;
 }
 
@@ -147,8 +143,6 @@ async function fetchWithFallback(primaryUrl, fallbackUrl, options = {}) {
                 return fallbackResponse;
             }
 
-            // Fallback itself failed.
-            // Keep the ORIGINAL primary error for final error handling.
             const fallbackError = new Error(
                 `Fallback CDN failed with HTTP ${fallbackResponse.status}`
             );
@@ -165,15 +159,214 @@ async function fetchWithFallback(primaryUrl, fallbackUrl, options = {}) {
                 }
             );
 
-            // IMPORTANT:
-            // The final error classification is based on the
-            // ORIGINAL primary CDN error, not the fallback error.
             throw primaryError;
         }
     }
 
-    // No fallback URL available.
     throw primaryError;
+}
+
+// ================================================================
+//  🖼️  ROBUST IMAGE LOADER WITH FALLBACK CDN ON ANY ERROR
+// ================================================================
+async function loadImageWithRetry(url, options = {}) {
+    const {
+        fallbackUrl = url.replace(CONFIG.CDN_BASE_URL, CONFIG.FALLBACK_CDN_BASE_URL),
+            cacheName = 'ff-icons',
+            timeout = 20000,
+            cacheTimeout = 2000,
+            retryDelay = 500
+    } = options;
+
+    const CACHE_TIMEOUT = cacheTimeout;
+    const RETRY_DELAY = retryDelay;
+    const TOTAL_TIMEOUT = timeout;
+
+    async function attemptCache(url) {
+        try {
+            const cache = await caches.open(cacheName);
+            const response = await cache.match(url);
+
+            if (!response) return null;
+
+            const blob = await response.blob();
+
+            if (blob && blob.size > 0) {
+                return blob;
+            }
+
+            return null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    async function fetchWithTimeout(url, timeout) {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeout);
+
+        try {
+            const response = await fetch(url, {
+                signal: controller.signal
+            });
+
+            clearTimeout(id);
+            return response;
+        } catch (err) {
+            clearTimeout(id);
+            throw err;
+        }
+    }
+
+    async function networkFetchWithFallback(primaryUrl, fallbackUrl) {
+        let primaryError = null;
+
+        try {
+            const response = await fetchWithTimeout(primaryUrl, 15000);
+
+            if (response.ok) {
+                return response;
+            }
+
+            primaryError = new Error(
+                `Primary CDN returned HTTP ${response.status}`
+            );
+            primaryError.status = response.status;
+
+        } catch (err) {
+            if (err.name === 'AbortError') {
+                primaryError = new Error('Primary CDN request timed out');
+                primaryError.status = 0;
+            } else {
+                primaryError = new Error(
+                    `Primary CDN network error: ${err.message}`
+                );
+                primaryError.status = 0;
+            }
+        }
+
+        if (fallbackUrl) {
+            try {
+                const fallbackResponse = await fetchWithTimeout(
+                    fallbackUrl,
+                    8000
+                );
+
+                if (fallbackResponse.ok) {
+                    return fallbackResponse;
+                }
+
+                console.warn(
+                    `Fallback CDN returned HTTP ${fallbackResponse.status}`
+                );
+
+            } catch (fallbackErr) {
+                console.warn(
+                    'Fallback CDN network error:',
+                    fallbackErr
+                );
+            }
+        }
+
+        throw primaryError;
+    }
+
+    const overallTimeout = new Promise((_, reject) =>
+        setTimeout(() => {
+            const err = new Error(
+                'Image loading timed out'
+            );
+            err.status = 0;
+            reject(err);
+        }, TOTAL_TIMEOUT)
+    );
+
+    try {
+        const result = await Promise.race([
+            (async () => {
+
+                // --------------------------------------------------
+                // Cache attempt #1
+                // --------------------------------------------------
+                let blob = await withTimeout(
+                    attemptCache(url),
+                    CACHE_TIMEOUT
+                );
+
+                if (blob) {
+                    return {
+                        blob,
+                        fromCache: true
+                    };
+                }
+
+                // --------------------------------------------------
+                // Small delay before second cache attempt
+                // --------------------------------------------------
+                await new Promise(resolve =>
+                    setTimeout(resolve, RETRY_DELAY)
+                );
+
+                // --------------------------------------------------
+                // Cache attempt #2
+                // --------------------------------------------------
+                blob = await withTimeout(
+                    attemptCache(url),
+                    CACHE_TIMEOUT
+                );
+
+                if (blob) {
+                    return {
+                        blob,
+                        fromCache: true
+                    };
+                }
+
+                // --------------------------------------------------
+                // Network: primary → fallback on ANY error
+                // --------------------------------------------------
+                const response = await networkFetchWithFallback(
+                    url,
+                    fallbackUrl
+                );
+
+                const cache = await caches.open(cacheName);
+
+                const clonedResponse = response.clone();
+
+                cache.put(url, clonedResponse).catch(() => {});
+
+                const dataBlob = await response.blob();
+
+                if (!dataBlob || dataBlob.size === 0) {
+                    const emptyBlobError = new Error(
+                        'Empty blob from CDN'
+                    );
+                    emptyBlobError.status = 0;
+                    throw emptyBlobError;
+                }
+
+                return {
+                    blob: dataBlob,
+                    fromCache: false
+                };
+            })(),
+
+            overallTimeout
+        ]);
+
+        return result;
+
+    } catch (err) {
+        throw err;
+    }
+}
+
+function withTimeout(promise, ms) {
+    return Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Cache timeout')), ms))
+    ]);
 }
 
 // --------------------------------------------------------------
@@ -197,7 +390,6 @@ tabBtns.forEach(btn => {
             loadAuthorImageWithCache();
         }
 
-        // Update scroll indicator after tab switch
         setTimeout(updateSettingsScrollDown, 50);
     });
 });
@@ -212,7 +404,6 @@ const versionPromise = new Promise(resolve => { versionResolve = resolve; });
 
 const WEBSITE_URL = CONFIG.WEBSITE_URL || (window.location.origin + window.location.pathname).replace(/\/+$/, '');
 
-// localStorage key for caching the WebApp version
 const WEBAPP_VERSION_STORAGE_KEY = 'ff_webapp_version';
 
 document.getElementById('sourceCodeLink').href = CONFIG.GITHUB_REPO_URL;
@@ -255,11 +446,9 @@ async function fetchSWVersion() {
             }
         }
         if (version) {
-            // Save to localStorage
             localStorage.setItem(WEBAPP_VERSION_STORAGE_KEY, version);
         } else {
             console.warn('Could not extract version from sw.js');
-            // Try cache
             const cached = localStorage.getItem(WEBAPP_VERSION_STORAGE_KEY);
             if (cached) {
                 version = cached;
@@ -278,7 +467,6 @@ async function fetchSWVersion() {
     if (version) {
         WEBAPP_VERSION = version;
         if (fromCache) {
-            // Show toast after a short delay (UI ready)
             setTimeout(() => {
                 showToast(`Using cached WebApp version: ${WEBAPP_VERSION}`);
             }, 800);
@@ -292,8 +480,6 @@ async function fetchSWVersion() {
     return WEBAPP_VERSION;
 }
 
-// No longer call fetchSWVersion() here; it will be called in DOMContentLoaded
-
 // --------------------------------------------------------------
 //  SERVICE WORKER REGISTRATION (with update detection)
 // --------------------------------------------------------------
@@ -304,29 +490,29 @@ function registerServiceWorker() {
     }
 
     return navigator.serviceWorker.register('sw.js')
-    .then(reg => {
-        swRegistration = reg;
-        console.log('Service Worker registered successfully');
-        reg.update().catch(() => {});
+        .then(reg => {
+            swRegistration = reg;
+            console.log('Service Worker registered successfully');
+            reg.update().catch(() => {});
 
-        reg.addEventListener('updatefound', () => {
-            const newWorker = reg.installing;
-            newWorker.addEventListener('statechange', () => {
-                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    sessionStorage.setItem('sw_update_pending', 'true');
-                    sessionStorage.setItem('webapp_updated', 'true');
-                    sessionStorage.setItem('clear_url_on_load', 'true');
-                }
+            reg.addEventListener('updatefound', () => {
+                const newWorker = reg.installing;
+                newWorker.addEventListener('statechange', () => {
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        sessionStorage.setItem('sw_update_pending', 'true');
+                        sessionStorage.setItem('webapp_updated', 'true');
+                        sessionStorage.setItem('clear_url_on_load', 'true');
+                    }
+                });
             });
-        });
 
-        return reg;
-    })
-    .catch(err => {
-        console.error('SW Registration failed:', err);
-        swRegistration = null;
-        return Promise.reject(err);
-    });
+            return reg;
+        })
+        .catch(err => {
+            console.error('SW Registration failed:', err);
+            swRegistration = null;
+            return Promise.reject(err);
+        });
 }
 
 if ('serviceWorker' in navigator) {
@@ -351,13 +537,13 @@ if ('serviceWorker' in navigator) {
 // --------------------------------------------------------------
 let allItems = [];
 let filteredItems = [];
-let totalItemsCount = 0;   // total number of items in the database (set after parse)
+let totalItemsCount = 0;
 let itemsById = new Map();
 let metadataObj = null;
 let rawDbUpdatedOnText = "Unknown";
 let dbUpdatedOnText = "Unknown";
 let currentPage = 1;
-let ITEMS_PER_PAGE = 80;   // now mutable
+let ITEMS_PER_PAGE = 80;
 let totalPages = 1;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -384,39 +570,52 @@ const rarityMap = {
 };
 
 // --------------------------------------------------------------
-//  FAVORITES SYSTEM
+//  FAVORITES SYSTEM – in‑memory Set for O(1) lookups
 // --------------------------------------------------------------
 const FAV_STORAGE_KEY = 'ff_favorites';
+let favorites = [];
+let favoriteIds = new Set();
 
-function getFavorites() {
+function loadFavorites() {
     try {
         const raw = localStorage.getItem(FAV_STORAGE_KEY);
-        return raw ? JSON.parse(raw) : [];
-    } catch { return []; }
+        const list = raw ? JSON.parse(raw) : [];
+        favorites = list;
+        favoriteIds = new Set(list.map(f => f.id));
+    } catch {
+        favorites = [];
+        favoriteIds = new Set();
+    }
 }
 
 function saveFavorites(list) {
+    favorites = list;
+    favoriteIds = new Set(list.map(f => f.id));
     localStorage.setItem(FAV_STORAGE_KEY, JSON.stringify(list));
+    updateFavUI();
 }
 
 function isFavorited(id) {
-    return getFavorites().some(f => f.id === String(id));
+    return favoriteIds.has(String(id));
 }
 
 function toggleFavorite(id) {
-    let favs = getFavorites();
     const strId = String(id);
-    const idx = favs.findIndex(f => f.id === strId);
+    let list = favorites.slice();
+    const idx = list.findIndex(f => f.id === strId);
     if (idx > -1) {
-        favs.splice(idx, 1);
+        list.splice(idx, 1);
     } else {
-        favs.push({ id: strId, timestamp: Date.now() });
+        list.push({ id: strId, timestamp: Date.now() });
     }
-    saveFavorites(favs);
-    updateFavUI();
+    saveFavorites(list);
     if (favFilterActive) {
         applyFilters();
     }
+}
+
+function getFavorites() {
+    return favorites.slice();
 }
 
 function getFavoritedItems() {
@@ -427,7 +626,7 @@ function getFavoritedItems() {
         const item = itemsById.get(f.id);
         if (item) items.push(item);
     });
-        return items;
+    return items;
 }
 
 // --------------------------------------------------------------
@@ -449,8 +648,7 @@ function saveFavState() {
 }
 
 function updateFavUI() {
-    const favs = getFavorites();
-    const count = favs.length;
+    const count = favorites.length;
 
     const toggle = document.getElementById('favToggle');
     const starEl = document.getElementById('favStar');
@@ -493,7 +691,6 @@ function updateStatusBar() {
     const filtered = filteredItems.length;
     const total = totalItemsCount;
     text.textContent = `Showing ${filtered} of ${total} items`;
-    // Update dot glow based on Performance Mode state
     const isReduced = document.body.classList.contains('reduce-effects');
     if (isReduced) {
         dot.classList.remove('glow');
@@ -513,9 +710,8 @@ function updateModeIndicator() {
     if (!dot || !text) return;
 
     const isReduced = document.body.classList.contains('reduce-effects');
-    const isPerformance = reduceEffectsToggle.checked; // same as isReduced
+    const isPerformance = reduceEffectsToggle.checked;
 
-    // Set color class and text
     if (isPerformance) {
         dot.className = 'status-dot mode-performance';
         text.textContent = 'Performance mode';
@@ -524,7 +720,6 @@ function updateModeIndicator() {
         text.textContent = 'Normal mode';
     }
 
-    // Apply glow/no‑glow based on reduce‑effects state (same as main status dot)
     if (isReduced) {
         dot.classList.add('no-glow');
         dot.classList.remove('glow');
@@ -609,23 +804,14 @@ searchClear.addEventListener('click', function() {
 searchClear.style.display = 'none';
 searchIcon.style.display = 'flex';
 
-// ================================================================
-//  FIX #1: Enter key closes keyboard and returns to top instantly
-// ================================================================
+// Enter key closes keyboard and returns to top instantly
 searchInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
         e.preventDefault();
-
-        // Remove focus from the search field.
         searchInput.blur();
-
-        // Extra safety for mobile browsers that keep the active element focused.
         if (document.activeElement === searchInput) {
             document.activeElement.blur();
         }
-
-        // Let the browser process the blur/keyboard dismissal first,
-        // then ensure the catalog remains at the top.
         requestAnimationFrame(() => {
             window.scrollTo({ top: 0, behavior: 'auto' });
         });
@@ -643,7 +829,7 @@ function formatDatabaseDate(dateStr) {
     const monthNum = parseInt(parts[1], 10);
     const day = parseInt(parts[2], 10);
     const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
-    "November", "December"
+        "November", "December"
     ];
     const monthName = months[monthNum - 1];
     if (!monthName || isNaN(day)) return dateStr;
@@ -676,11 +862,10 @@ function showCreditToastIfNeeded() {
 // --------------------------------------------------------------
 //  WHAT'S NEW? DIALOG – Pagination based with footer bar
 // --------------------------------------------------------------
-async function showWhatsNew(tutorial = false) {
+async function showWhatsNew() {
     const reportTitle = document.getElementById('reportTitle');
     const reportContent = document.getElementById('reportContent');
 
-    // Remove any mode classes and set whatsnew-mode
     if (reportContent) {
         reportContent.classList.remove('tutorial-mode', 'whatsnew-mode');
         reportContent.classList.add('whatsnew-mode');
@@ -808,11 +993,9 @@ function renderWhatsNewPage(container) {
         html += `</div>`;
     });
     container.innerHTML = html;
-    // Reset scroll to top of the report body
     const reportBody = container.closest('.report-body');
     if (reportBody) reportBody.scrollTop = 0;
 }
-
 
 function renderPaginationBar() {
     const footer = document.getElementById('reportFooter');
@@ -899,7 +1082,7 @@ async function loadAuthorImageWithCache() {
 
     if (cachedBlob) {
         const objectUrl = URL.createObjectURL(cachedBlob);
-        img.src = objectUrl;
+        setImageBlob(img, objectUrl);
         img.classList.add('loaded');
         loader.classList.add('hidden');
     } else {
@@ -916,7 +1099,7 @@ async function loadAuthorImageWithCache() {
             const response = await fetchWithFallback(fetchUrlPrimary, fetchUrlFallback, { timeout: 15000 });
             const blob = await response.blob();
             const objectUrl = URL.createObjectURL(blob);
-            img.src = objectUrl;
+            setImageBlob(img, objectUrl);
             img.classList.add('loaded');
             if (cache) {
                 try {
@@ -1035,7 +1218,6 @@ function openModal(id, data = null) {
     document.body.style.overflow = 'hidden';
     activeModalStack.push(id);
 
-    // Cancel any pending auto-show timer (user is interacting with a modal)
     scheduleTutorialAutoShow();
 
     if (id === 'itemModal' && data && data.itemId) {
@@ -1049,7 +1231,6 @@ function openModal(id, data = null) {
         }, 50);
     }
 
-    // Attach scroll listener for settings modal
     if (id === 'settingsModal') {
         const body = document.querySelector('.settings-body');
         if (body) {
@@ -1071,7 +1252,6 @@ function closeModal(id, isPopState = false) {
     updateUrlFromStack('replace');
     if (activeModalStack.length === 0) {
         document.body.style.overflow = '';
-        // Start the 2-second countdown now that no modals are open
         scheduleTutorialAutoShow();
     }
 }
@@ -1088,7 +1268,6 @@ function forceHideModal(id) {
             if (content) {
                 content.classList.remove('tutorial-mode', 'whatsnew-mode');
             }
-            // ---- Clean up performance image object URL ----
             const perfImg = document.getElementById('perfImage');
             if (perfImg && perfImg.dataset.objectUrl) {
                 URL.revokeObjectURL(perfImg.dataset.objectUrl);
@@ -1099,7 +1278,7 @@ function forceHideModal(id) {
             const spinner = document.getElementById('perfSpinner');
             if (spinner) spinner.style.display = 'block';
         }
-        
+
         if (id === 'settingsModal') {
             const body = document.querySelector('.settings-body');
             if (body) {
@@ -1244,80 +1423,10 @@ async function populateItemModal(item) {
         modalImg.classList.remove('loaded', 'is-fallback');
         modalReloadBtn.classList.remove('visible');
         modalReloadBtn.style.display = 'none';
-        loadModalImage(item, modalImg, modalReloadBtn);
+        loadImageForElement(modalImg, item, modalReloadBtn);
     };
 
-    function loadModalImage(item, imgEl, btn) {
-        const url = imgEl.dataset.originalUrl;
-        loadImageWithRetry(url)
-            .then(({ blob, fromCache }) => {
-                const objectUrl = URL.createObjectURL(blob);
-                imgEl.dataset.objectUrl = objectUrl;
-
-                const markLoaded = () => {
-                    if (imgEl.dataset.loaded === 'true') return;
-                    imgEl.dataset.loaded = 'true';
-                    requestAnimationFrame(() => {
-                        requestAnimationFrame(() => {
-                            imgEl.classList.add('loaded');
-                            if (!imgEl.classList.contains('is-fallback')) {
-                                btn.classList.remove('visible');
-                                btn.style.display = 'none';
-                            }
-                        });
-                    });
-                };
-
-                imgEl.onload = markLoaded;
-                imgEl.onerror = (err) => {
-                    const fallbackUrl = getFallbackUrl(err);
-                    imgEl.src = fallbackUrl;
-                    imgEl.classList.add('is-fallback');
-                    btn.classList.add('visible');
-                    btn.style.display = 'flex';
-                    markLoaded();
-                };
-
-                imgEl.src = objectUrl;
-
-                if (imgEl.complete && imgEl.naturalWidth > 0) {
-                    if (imgEl.decode) {
-                        imgEl.decode().then(markLoaded).catch(() => markLoaded());
-                    } else {
-                        markLoaded();
-                    }
-                } else {
-                    if (imgEl.decode) {
-                        imgEl.decode().then(markLoaded).catch(() => {});
-                    }
-                }
-
-                if (!fromCache) recordImageSize(blob.size);
-            })
-            .catch(err => {
-                console.warn(`Failed to load icon for ${item.itemID}:`, err);
-                const fallbackUrl = getFallbackUrl(err);
-                imgEl.src = fallbackUrl;
-                imgEl.classList.add('is-fallback');
-                btn.classList.add('visible');
-                btn.style.display = 'flex';
-
-                const markLoaded = () => {
-                    if (imgEl.dataset.loaded === 'true') return;
-                    imgEl.dataset.loaded = 'true';
-                    requestAnimationFrame(() => {
-                        requestAnimationFrame(() => {
-                            imgEl.classList.add('loaded');
-                        });
-                    });
-                };
-                imgEl.onload = markLoaded;
-                imgEl.onerror = markLoaded;
-                setTimeout(markLoaded, 3000);
-            });
-    }
-
-    loadModalImage(item, modalImg, modalReloadBtn);
+    loadImageForElement(modalImg, item, modalReloadBtn);
 
     document.getElementById('modalName').textContent = item.name || 'Unnamed';
 
@@ -1400,7 +1509,6 @@ document.getElementById('modalBadges').addEventListener('click', function(e) {
     e.stopPropagation();
 
     let text = badge.textContent.trim();
-    // For ID badge, copy only the numeric part
     if (badge.classList.contains('badge-id')) {
         text = text.replace(/^ID:\s*/, '').trim();
     }
@@ -1452,7 +1560,11 @@ async function convertBlobToPng(blob) {
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0);
             canvas.toBlob((pngBlob) => {
-                resolve(pngBlob);
+                if (pngBlob) {
+                    resolve(pngBlob);
+                } else {
+                    reject(new Error('Failed to create PNG'));
+                }
                 URL.revokeObjectURL(url);
             }, 'image/png');
         };
@@ -1469,16 +1581,16 @@ async function convertBlobToPng(blob) {
 // --------------------------------------------------------------
 function triggerDownload(primaryUrl, filename) {
     fetchImageAsBlob(primaryUrl)
-    .then(blob => {
-        const ext = filename.split('.').pop().toLowerCase();
-        if (ext === 'png') {
-            return convertBlobToPng(blob);
-        } else {
-            return blob;
-        }
-    })
-    .then(blob => executeBlobDownload(blob, filename))
-    .catch(() => alert('Failed to download image.'));
+        .then(blob => {
+            const ext = filename.split('.').pop().toLowerCase();
+            if (ext === 'png') {
+                return convertBlobToPng(blob);
+            } else {
+                return blob;
+            }
+        })
+        .then(blob => executeBlobDownload(blob, filename))
+        .catch(() => alert('Failed to download image.'));
 }
 
 function executeBlobDownload(blob, filename) {
@@ -1489,7 +1601,10 @@ function executeBlobDownload(blob, filename) {
     a.download = filename;
     document.body.appendChild(a);
     a.click();
-    window.URL.revokeObjectURL(url);
+    setTimeout(() => {
+        URL.revokeObjectURL(url);
+        a.remove();
+    }, 0);
 }
 
 async function copyImageToClipboard(imgUrl, customBtn, cardItemID) {
@@ -1502,7 +1617,7 @@ async function copyImageToClipboard(imgUrl, customBtn, cardItemID) {
         if (customBtn) {
             const originalHTML = customBtn.innerHTML;
             customBtn.innerHTML =
-            `<svg viewBox="0 0 24 24" style="fill: #2196F3; transform: scale(1.3);"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`;
+                `<svg viewBox="0 0 24 24" style="fill: #2196F3; transform: scale(1.3);"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`;
             setTimeout(() => { customBtn.innerHTML = originalHTML; }, 2000);
         }
 
@@ -1554,7 +1669,7 @@ modalShareBtn.addEventListener('click', function() {
             showToast("Item link copied. Ready to share!");
             const originalHTML = this.innerHTML;
             this.innerHTML =
-            `<svg viewBox="0 0 24 24" style="fill: #4CAF50; transform: scale(1.3);"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`;
+                `<svg viewBox="0 0 24 24" style="fill: #4CAF50; transform: scale(1.3);"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`;
             setTimeout(() => { this.innerHTML = originalHTML; }, 2000);
         }).catch(() => {
             showToast("Failed to copy link.");
@@ -1641,7 +1756,7 @@ document.getElementById('openSettings').addEventListener('click', () => {
 //  VIEW CHANGELOGS BUTTON
 // --------------------------------------------------------------
 viewChangelogsBtn.addEventListener('click', () => {
-    showWhatsNew(false);
+    showWhatsNew();
 });
 
 // --------------------------------------------------------------
@@ -1681,8 +1796,8 @@ document.getElementById('updateWebAppBtn').addEventListener('click', async () =>
         let newVersion = null;
         const patterns = [
             /CACHE_NAME\s*=\s*['"][^'"]*-(v[\d\.]+)['"]/,
-                                                            /version\s*[:=]\s*['"](v[\d\.]+)['"]/,
-                                                            /CACHE_NAME\s*=\s*['"]([^'"]*)['"]/
+            /version\s*[:=]\s*['"](v[\d\.]+)['"]/,
+            /CACHE_NAME\s*=\s*['"]([^'"]*)['"]/
         ];
         for (const pat of patterns) {
             const match = text.match(pat);
@@ -1756,20 +1871,17 @@ document.getElementById('dlJson').addEventListener('click', () => {
     const jsonData = [meta, ...allItems];
     triggerLocalDownload(
         new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' }),
-                         'ff-catalog.json'
+        'ff-catalog.json'
     );
 });
 
 document.getElementById('dlMsgpack').addEventListener('click', async () => {
     if (!allItems.length) return;
-    const cache = await getLocalCache();
-    if (cache && cache.rawData) {
-        triggerLocalDownload(new Blob([cache.rawData], { type: 'application/octet-stream' }),
-                             'ff-catalog.msgpack');
-    } else {
-        triggerLocalDownload(new Blob([MessagePack.encode(allItems)], { type: 'application/octet-stream' }),
-                             'ff-catalog.msgpack');
-    }
+    const encoded = MessagePack.encode(allItems);
+    triggerLocalDownload(
+        new Blob([encoded], { type: 'application/octet-stream' }),
+        'ff-catalog.msgpack'
+    );
 });
 
 // --------------------------------------------------------------
@@ -1859,10 +1971,8 @@ document.getElementById('summarizeBtn').addEventListener('click', () => {
 
     document.getElementById('reportTitle').textContent = "Database Info";
     document.getElementById('reportContent').innerHTML = reportHTML;
-    // Remove whatsnew-mode for diagnostic reports
     document.getElementById('reportContent').classList.remove('whatsnew-mode', 'tutorial-mode');
 
-    // Add close button to footer
     document.getElementById('reportFooter').innerHTML = `<button class="whatsnew-close-btn" onclick="closeModal('reportModal')" style="background: var(--glow); border: none; color: #fff; padding: 6px 18px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(168, 66, 255, 0.4);">CLOSE</button>`;
 
     const modal = document.getElementById('reportModal');
@@ -1929,161 +2039,159 @@ document.getElementById('findFiltersBtn').addEventListener('click', async () => 
             if (item.rarity) dbRares.add(item.rarity);
         });
 
-            const htmlTags = Array.from(document.querySelectorAll('#tagFilter option')).map(o => o.value.toLowerCase()).filter(v => v);
-            const htmlTypes = Array.from(document.querySelectorAll('#typeFilter option:not([disabled])')).map(o => o.value.toLowerCase()).filter(v => v);
-            const htmlRares = Array.from(document.querySelectorAll('#rareFilter option:not([disabled])')).map(o => o.value.toLowerCase()).filter(v => v);
+        const htmlTags = Array.from(document.querySelectorAll('#tagFilter option')).map(o => o.value.toLowerCase()).filter(v => v);
+        const htmlTypes = Array.from(document.querySelectorAll('#typeFilter option:not([disabled])')).map(o => o.value.toLowerCase()).filter(v => v);
+        const htmlRares = Array.from(document.querySelectorAll('#rareFilter option:not([disabled])')).map(o => o.value.toLowerCase()).filter(v => v);
 
-            const missingTags = Array.from(dbTags).filter(t => !htmlTags.includes(t.toLowerCase()));
-            const missingTypes = Array.from(dbTypes).filter(t => !htmlTypes.includes(t.toLowerCase()));
-            const missingRares = Array.from(dbRares).filter(r => !htmlRares.includes(r.toLowerCase()));
+        const missingTags = Array.from(dbTags).filter(t => !htmlTags.includes(t.toLowerCase()));
+        const missingTypes = Array.from(dbTypes).filter(t => !htmlTypes.includes(t.toLowerCase()));
+        const missingRares = Array.from(dbRares).filter(r => !htmlRares.includes(r.toLowerCase()));
 
-            let missingIconIds = [];
-            let iconCheckError = null;
-            let cacheData = null;
+        let missingIconIds = [];
+        let iconCheckError = null;
+        let cacheData = null;
 
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000);
-                const res = await fetch(CONFIG.GITHUB_API_TREE_URL, {
-                    signal: controller.signal
-                });
-                clearTimeout(timeoutId);
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+            const res = await fetch(CONFIG.GITHUB_API_TREE_URL, {
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
 
-                if (!res.ok) {
-                    if (res.status === 403) throw new Error("GitHub API rate limit exceeded. Try again later or use VPN.");
-                    if (res.status === 404) throw new Error("Repository or branch not found");
-                    throw new Error(`HTTP Error ${res.status}`);
-                }
-
-                const data = await res.json();
-                let repoImages = new Set();
-
-                if (data.tree && Array.isArray(data.tree)) {
-                    data.tree.forEach(file => {
-                        if (file.path.startsWith('Item-webp/') && file.path.endsWith('.webp')) {
-                            const filename = file.path.replace('Item-webp/', '').replace('.webp', '');
-                            repoImages.add(filename);
-                        }
-                    });
-
-                    allItems.forEach(item => {
-                        if (!repoImages.has(String(item.itemID))) {
-                            missingIconIds.push(item.itemID);
-                        }
-                    });
-
-                    const blackWhiteMissing = [];
-                    const otherMissing = [];
-                    missingIconIds.forEach(id => {
-                        const item = itemsById.get(String(id));
-                        if (item && item.icon === 'UI_Icon_BlackWhite_01') {
-                            blackWhiteMissing.push(id);
-                        } else {
-                            otherMissing.push(id);
-                        }
-                    });
-                    cacheData = { missingIconIds, blackWhiteMissing, otherMissing };
-                    saveMissingIconsCache(cacheData);
-                } else {
-                    throw new Error("Invalid API response format");
-                }
-            } catch (e) {
-                iconCheckError = e.name === 'AbortError' ? "Request timed out" : e.message;
-                cacheData = loadMissingIconsCache();
+            if (!res.ok) {
+                if (res.status === 403) throw new Error("GitHub API rate limit exceeded. Try again later or use VPN.");
+                if (res.status === 404) throw new Error("Repository or branch not found");
+                throw new Error(`HTTP Error ${res.status}`);
             }
 
-            let reportHTML = "";
+            const data = await res.json();
+            let repoImages = new Set();
 
-            if (missingTags.length === 0 && missingTypes.length === 0 && missingRares.length === 0) {
-                reportHTML +=
-                "<h3 class='report-title'>Missing Filters</h3><p>No missing filters found. HTML is up to date with database.</p>";
-            } else {
-                reportHTML += "<h3 class='report-title'>Missing Filters in html</h3>";
-                if (missingTags.length > 0) reportHTML +=
-                    `<h4>Tag filters:</h4><ul><li class="copyable-box">${missingTags.join('</li><li class="copyable-box">')}</li></ul>`;
-                if (missingTypes.length > 0) reportHTML +=
-                    `<h4>Type filters:</h4><ul><li class="copyable-box">${missingTypes.join('</li><li class="copyable-box">')}</li></ul>`;
-                if (missingRares.length > 0) reportHTML +=
-                    `<h4>Rarity filters:</h4><ul><li class="copyable-box">${missingRares.join('</li><li class="copyable-box">')}</li></ul>`;
-            }
-
-            reportHTML += "<h3 class='report-title'>Missing Icons in Repo</h3>";
-            if (iconCheckError) {
-                reportHTML += `<p style="color: #ff4c4c;">Error checking icons: ${iconCheckError}</p>`;
-                if (cacheData) {
-                    reportHTML += `<p><strong>Showing cached report:</strong></p>`;
-                    const { blackWhiteMissing, otherMissing } = cacheData;
-                    if (blackWhiteMissing.length === 0 && otherMissing.length === 0) {
-                        reportHTML += "<p>All items in the database have their corresponding webp icons on the repository (cached).</p>";
-                    } else {
-                        if (blackWhiteMissing.length > 0) {
-                            reportHTML += `<p>Found <strong>${blackWhiteMissing.length}</strong> missing icons with 'UI_Icon_BlackWhite_01' icon (cached):</p><ul>`;
-                            blackWhiteMissing.forEach(id => {
-                                reportHTML += `<li class="copyable-box">${id}</li>`;
-                            });
-                            reportHTML += `</ul>`;
-                        }
-                        if (otherMissing.length > 0) {
-                            reportHTML += `<p><strong>${otherMissing.length}</strong> other missing icons (cached):</p>`;
-                            reportHTML += `<div class="missing-icons-grid">`;
-                            reportHTML += `<div class="grid-header">Item ID</div><div class="grid-header">Icon Name</div>`;
-                            otherMissing.forEach(id => {
-                                const item = itemsById.get(String(id));
-                                const iconName = item ? item.icon : 'N/A';
-                                reportHTML += `<div class="grid-row">`;
-                                reportHTML += `<div class="id-cell"><span class="copyable-box">${id}</span></div>`;
-                                reportHTML += `<div class="name-cell"><span class="copyable-box">${iconName}</span></div>`;
-                                reportHTML += `</div>`;
-                            });
-                            reportHTML += `</div>`;
-                        }
+            if (data.tree && Array.isArray(data.tree)) {
+                data.tree.forEach(file => {
+                    if (file.path.startsWith('Item-webp/') && file.path.endsWith('.webp')) {
+                        const filename = file.path.replace('Item-webp/', '').replace('.webp', '');
+                        repoImages.add(filename);
                     }
-                } else {
-                    reportHTML += `<p>No cached report found to show</p>`;
-                }
-            } else if (missingIconIds.length === 0) {
-                reportHTML += "<p>All items in the database have their corresponding webp icons on the repository.</p>";
+                });
+
+                allItems.forEach(item => {
+                    if (!repoImages.has(String(item.itemID))) {
+                        missingIconIds.push(item.itemID);
+                    }
+                });
+
+                const blackWhiteMissing = [];
+                const otherMissing = [];
+                missingIconIds.forEach(id => {
+                    const item = itemsById.get(String(id));
+                    if (item && item.icon === 'UI_Icon_BlackWhite_01') {
+                        blackWhiteMissing.push(id);
+                    } else {
+                        otherMissing.push(id);
+                    }
+                });
+                cacheData = { missingIconIds, blackWhiteMissing, otherMissing };
+                saveMissingIconsCache(cacheData);
             } else {
-                const { blackWhiteMissing, otherMissing } = cacheData || { blackWhiteMissing: [], otherMissing: [] };
-                if (blackWhiteMissing.length > 0) {
-                    reportHTML += `<p>Found <strong>${blackWhiteMissing.length}</strong> missing icons with 'UI_Icon_BlackWhite_01' icon:</p><ul>`;
-                    blackWhiteMissing.forEach(id => {
-                        reportHTML += `<li class="copyable-box">${id}</li>`;
-                    });
-                    reportHTML += `</ul>`;
-                }
-                if (otherMissing.length > 0) {
-                    reportHTML += `<p><strong>${otherMissing.length}</strong> other missing icons:</p>`;
-                    reportHTML += `<div class="missing-icons-grid">`;
-                    reportHTML += `<div class="grid-header">Item ID</div><div class="grid-header">Icon Name</div>`;
-                    otherMissing.forEach(id => {
-                        const item = itemsById.get(String(id));
-                        const iconName = item ? item.icon : 'N/A';
-                        reportHTML += `<div class="grid-row">`;
-                        reportHTML += `<div class="id-cell"><span class="copyable-box">${id}</span></div>`;
-                        reportHTML += `<div class="name-cell"><span class="copyable-box">${iconName}</span></div>`;
+                throw new Error("Invalid API response format");
+            }
+        } catch (e) {
+            iconCheckError = e.name === 'AbortError' ? "Request timed out" : e.message;
+            cacheData = loadMissingIconsCache();
+        }
+
+        let reportHTML = "";
+
+        if (missingTags.length === 0 && missingTypes.length === 0 && missingRares.length === 0) {
+            reportHTML +=
+                "<h3 class='report-title'>Missing Filters</h3><p>No missing filters found. HTML is up to date with database.</p>";
+        } else {
+            reportHTML += "<h3 class='report-title'>Missing Filters in html</h3>";
+            if (missingTags.length > 0) reportHTML +=
+                `<h4>Tag filters:</h4><ul><li class="copyable-box">${missingTags.join('</li><li class="copyable-box">')}</li></ul>`;
+            if (missingTypes.length > 0) reportHTML +=
+                `<h4>Type filters:</h4><ul><li class="copyable-box">${missingTypes.join('</li><li class="copyable-box">')}</li></ul>`;
+            if (missingRares.length > 0) reportHTML +=
+                `<h4>Rarity filters:</h4><ul><li class="copyable-box">${missingRares.join('</li><li class="copyable-box">')}</li></ul>`;
+        }
+
+        reportHTML += "<h3 class='report-title'>Missing Icons in Repo</h3>";
+        if (iconCheckError) {
+            reportHTML += `<p style="color: #ff4c4c;">Error checking icons: ${iconCheckError}</p>`;
+            if (cacheData) {
+                reportHTML += `<p><strong>Showing cached report:</strong></p>`;
+                const { blackWhiteMissing, otherMissing } = cacheData;
+                if (blackWhiteMissing.length === 0 && otherMissing.length === 0) {
+                    reportHTML += "<p>All items in the database have their corresponding webp icons on the repository (cached).</p>";
+                } else {
+                    if (blackWhiteMissing.length > 0) {
+                        reportHTML += `<p>Found <strong>${blackWhiteMissing.length}</strong> missing icons with 'UI_Icon_BlackWhite_01' icon (cached):</p><ul>`;
+                        blackWhiteMissing.forEach(id => {
+                            reportHTML += `<li class="copyable-box">${id}</li>`;
+                        });
+                        reportHTML += `</ul>`;
+                    }
+                    if (otherMissing.length > 0) {
+                        reportHTML += `<p><strong>${otherMissing.length}</strong> other missing icons (cached):</p>`;
+                        reportHTML += `<div class="missing-icons-grid">`;
+                        reportHTML += `<div class="grid-header">Item ID</div><div class="grid-header">Icon Name</div>`;
+                        otherMissing.forEach(id => {
+                            const item = itemsById.get(String(id));
+                            const iconName = item ? item.icon : 'N/A';
+                            reportHTML += `<div class="grid-row">`;
+                            reportHTML += `<div class="id-cell"><span class="copyable-box">${id}</span></div>`;
+                            reportHTML += `<div class="name-cell"><span class="copyable-box">${iconName}</span></div>`;
+                            reportHTML += `</div>`;
+                        });
                         reportHTML += `</div>`;
-                    });
+                    }
+                }
+            } else {
+                reportHTML += `<p>No cached report found to show</p>`;
+            }
+        } else if (missingIconIds.length === 0) {
+            reportHTML += "<p>All items in the database have their corresponding webp icons on the repository.</p>";
+        } else {
+            const { blackWhiteMissing, otherMissing } = cacheData || { blackWhiteMissing: [], otherMissing: [] };
+            if (blackWhiteMissing.length > 0) {
+                reportHTML += `<p>Found <strong>${blackWhiteMissing.length}</strong> missing icons with 'UI_Icon_BlackWhite_01' icon:</p><ul>`;
+                blackWhiteMissing.forEach(id => {
+                    reportHTML += `<li class="copyable-box">${id}</li>`;
+                });
+                reportHTML += `</ul>`;
+            }
+            if (otherMissing.length > 0) {
+                reportHTML += `<p><strong>${otherMissing.length}</strong> other missing icons:</p>`;
+                reportHTML += `<div class="missing-icons-grid">`;
+                reportHTML += `<div class="grid-header">Item ID</div><div class="grid-header">Icon Name</div>`;
+                otherMissing.forEach(id => {
+                    const item = itemsById.get(String(id));
+                    const iconName = item ? item.icon : 'N/A';
+                    reportHTML += `<div class="grid-row">`;
+                    reportHTML += `<div class="id-cell"><span class="copyable-box">${id}</span></div>`;
+                    reportHTML += `<div class="name-cell"><span class="copyable-box">${iconName}</span></div>`;
                     reportHTML += `</div>`;
-                }
+                });
+                reportHTML += `</div>`;
             }
+        }
 
-            document.getElementById('reportTitle').textContent = "Diagnostic Report";
-            document.getElementById('reportContent').innerHTML = reportHTML;
-            // Remove whatsnew-mode for diagnostic reports
-            document.getElementById('reportContent').classList.remove('whatsnew-mode', 'tutorial-mode');
+        document.getElementById('reportTitle').textContent = "Diagnostic Report";
+        document.getElementById('reportContent').innerHTML = reportHTML;
+        document.getElementById('reportContent').classList.remove('whatsnew-mode', 'tutorial-mode');
 
-            // Add close button to footer
-            document.getElementById('reportFooter').innerHTML = `<button class="whatsnew-close-btn" onclick="closeModal('reportModal')" style="background: var(--glow); border: none; color: #fff; padding: 6px 18px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(168, 66, 255, 0.4);">CLOSE</button>`;
+        document.getElementById('reportFooter').innerHTML = `<button class="whatsnew-close-btn" onclick="closeModal('reportModal')" style="background: var(--glow); border: none; color: #fff; padding: 6px 18px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(168, 66, 255, 0.4);">CLOSE</button>`;
 
-            const modal = document.getElementById('reportModal');
-            if (modal) {
-                modal.classList.remove('hidden');
-                document.body.style.overflow = 'hidden';
-                if (!activeModalStack.includes('reportModal')) {
-                    activeModalStack.push('reportModal');
-                }
+        const modal = document.getElementById('reportModal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            if (!activeModalStack.includes('reportModal')) {
+                activeModalStack.push('reportModal');
             }
+        }
 
     } catch (err) {
         loadingOverlay.classList.remove('active');
@@ -2163,8 +2271,7 @@ function loadSettings() {
     if (localStorage.getItem('downloadAs')) downloadAs.value = localStorage.getItem('downloadAs');
 
     iconLimitInput.value = localStorage.getItem('iconLimitMB') || '15';
-    
-    // Load items per page
+
     const storedItemsPerPage = localStorage.getItem('itemsPerPage');
     if (storedItemsPerPage !== null) {
         const val = parseInt(storedItemsPerPage, 10);
@@ -2207,7 +2314,6 @@ function applyReduceEffects(enabled) {
         reduceEffectsStatus.textContent = 'Off';
         reduceEffectsStatus.className = 'toggle-status off';
     }
-    // Update the mode indicator (dot + text)
     updateModeIndicator();
 }
 
@@ -2216,9 +2322,7 @@ reduceEffectsToggle.addEventListener('change', function() {
     applyReduceEffects(enabled);
     localStorage.setItem('reduceEffects', String(enabled));
     saveSettings();
-    updateStatusBar();  // Update dot glow
-    // Update mode indicator (already called inside applyReduceEffects, but keep for safety)
-    updateModeIndicator();
+    updateStatusBar();
 });
 
 [rangeName, rangeID, rangeDesc, rangeIcon].forEach(cb => cb.addEventListener('change', () => {
@@ -2356,8 +2460,8 @@ function renderStorageBar() {
     if (pct > 90) { storageBarFill.className = 'storage-bar-fill danger'; } else if (pct > 70) { storageBarFill
         .className = 'storage-bar-fill warning'; } else { storageBarFill.className = 'storage-bar-fill'; }
 
-        const usedMB = (currentIconStorageSize / (1024 * 1024)).toFixed(1);
-        storageBarText.textContent = `${usedMB}MB / ${iconStorageLimitMB}MB`;
+    const usedMB = (currentIconStorageSize / (1024 * 1024)).toFixed(1);
+    storageBarText.textContent = `${usedMB}MB / ${iconStorageLimitMB}MB`;
 }
 
 async function checkAndCleanStorage() {
@@ -2440,26 +2544,28 @@ itemsPerPageTick.addEventListener('click', () => {
     localStorage.setItem('itemsPerPage', String(ITEMS_PER_PAGE));
     itemsPerPageInput.value = ITEMS_PER_PAGE;
     itemsPerPageTick.disabled = true;
-    // Reset to first page and re-render
     currentPage = 1;
     applyFilters();
     showToast(`Items per page set to ${ITEMS_PER_PAGE}`);
 });
 
 // --------------------------------------------------------------
-//  INDEXEDDB HELPER
+//  INDEXEDDB HELPER – Now stores parsed data, not raw
 // --------------------------------------------------------------
 const DB_NAME = 'FF_Catalog_Storage';
 const DB_STORE = 'database_cache';
 
 function openIDB() {
     return new Promise((resolve, reject) => {
-        const req = indexedDB.open(DB_NAME, 1);
+        const req = indexedDB.open(DB_NAME, 2);
         req.onupgradeneeded = (e) => {
             const db = e.target.result;
             if (!db.objectStoreNames.contains(DB_STORE)) {
                 db.createObjectStore(DB_STORE);
             }
+            const tx = e.target.transaction;
+            const store = tx.objectStore(DB_STORE);
+            store.clear();
         };
         req.onsuccess = () => resolve(req.result);
         req.onerror = () => reject(req.error);
@@ -2473,7 +2579,43 @@ async function getLocalCache() {
             const tx = db.transaction(DB_STORE, 'readonly');
             const store = tx.objectStore(DB_STORE);
             const req = store.get('cached_db');
-            req.onsuccess = () => resolve(req.result || null);
+            req.onsuccess = () => {
+                const record = req.result;
+                if (!record) return resolve(null);
+                if (record.items && Array.isArray(record.items) && record.updatedOn) {
+                    return resolve({
+                        items: record.items,
+                        updatedOn: record.updatedOn,
+                        timestamp: record.timestamp || 0
+                    });
+                }
+                if (record.rawData) {
+                    try {
+                        const decoded = MessagePack.decode(record.rawData);
+                        let items = null,
+                            updatedOn = record.updatedOn || "Unknown";
+                        if (Array.isArray(decoded)) {
+                            if (decoded.length > 0 && typeof decoded[0] === 'object' && decoded[0] !== null && (decoded[0].updated_on || decoded[0].version || decoded[0]._metadata)) {
+                                updatedOn = decoded[0].updated_on || decoded[0].version || "Unknown";
+                                items = decoded.slice(1);
+                            } else {
+                                items = decoded;
+                            }
+                        } else if (typeof decoded === 'object' && decoded !== null) {
+                            items = decoded.items || decoded.data || [];
+                            updatedOn = decoded.updated_on || updatedOn;
+                        }
+                        if (items && Array.isArray(items)) {
+                            const parsedRecord = { items, updatedOn, timestamp: record.timestamp || Date.now() };
+                            saveLocalCache(items, updatedOn);
+                            return resolve(parsedRecord);
+                        }
+                    } catch (e) {
+                        console.warn('Failed to upgrade old raw cache:', e);
+                    }
+                }
+                resolve(null);
+            };
             req.onerror = () => resolve(null);
         });
     } catch (e) {
@@ -2481,235 +2623,25 @@ async function getLocalCache() {
     }
 }
 
-async function saveLocalCache(rawData) {
+async function saveLocalCache(items, updatedOn) {
     try {
         const db = await openIDB();
         return new Promise((resolve) => {
             const tx = db.transaction(DB_STORE, 'readwrite');
             const store = tx.objectStore(DB_STORE);
-            store.put({
-                rawData: rawData,
+            const record = {
+                items: items,
+                updatedOn: updatedOn,
                 timestamp: Date.now()
-            }, 'cached_db');
+            };
+            store.put(record, 'cached_db');
             tx.oncomplete = () => resolve(true);
             tx.onerror = () => resolve(false);
         });
     } catch (e) {
         console.error("IDB save error:", e);
+        return false;
     }
-}
-
-// ================================================================
-//  🖼️  ROBUST IMAGE LOADER WITH FALLBACK CDN ON ANY ERROR
-// ================================================================
-async function loadImageWithRetry(url) {
-    const CACHE_TIMEOUT = 2000;
-    const RETRY_DELAY = 500;
-    const TOTAL_TIMEOUT = 20000;
-
-    async function attemptCache(url) {
-        try {
-            const cache = await caches.open('ff-icons');
-            const response = await cache.match(url);
-
-            if (!response) return null;
-
-            const blob = await response.blob();
-
-            if (blob && blob.size > 0) {
-                return blob;
-            }
-
-            return null;
-        } catch (_) {
-            return null;
-        }
-    }
-
-    async function fetchWithTimeout(url, timeout) {
-        const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), timeout);
-
-        try {
-            const response = await fetch(url, {
-                signal: controller.signal
-            });
-
-            clearTimeout(id);
-            return response;
-        } catch (err) {
-            clearTimeout(id);
-            throw err;
-        }
-    }
-
-    async function networkFetchWithFallback(primaryUrl, fallbackUrl) {
-        let primaryError = null;
-
-        // ----------------------------------------------------------
-        // 1. Try jsDelivr
-        // ----------------------------------------------------------
-        try {
-            const response = await fetchWithTimeout(primaryUrl, 15000);
-
-            if (response.ok) {
-                return response;
-            }
-
-            primaryError = new Error(
-                `Primary CDN returned HTTP ${response.status}`
-            );
-            primaryError.status = response.status;
-
-        } catch (err) {
-            if (err.name === 'AbortError') {
-                primaryError = new Error('Primary CDN request timed out');
-                primaryError.status = 0;
-            } else {
-                primaryError = new Error(
-                    `Primary CDN network error: ${err.message}`
-                );
-                primaryError.status = 0;
-            }
-        }
-
-        // ----------------------------------------------------------
-        // 2. Primary failed → ALWAYS try Statically
-        // ----------------------------------------------------------
-        if (fallbackUrl) {
-            try {
-                const fallbackResponse = await fetchWithTimeout(
-                    fallbackUrl,
-                    8000
-                );
-
-                if (fallbackResponse.ok) {
-                    return fallbackResponse;
-                }
-
-                console.warn(
-                    `Fallback CDN returned HTTP ${fallbackResponse.status}`
-                );
-
-            } catch (fallbackErr) {
-                console.warn(
-                    'Fallback CDN network error:',
-                    fallbackErr
-                );
-            }
-        }
-
-        // ----------------------------------------------------------
-        // 3. BOTH failed
-        //
-        // Preserve the PRIMARY error because the final error image
-        // must represent the error that caused the fallback.
-        // ----------------------------------------------------------
-        throw primaryError;
-    }
-
-    const overallTimeout = new Promise((_, reject) =>
-        setTimeout(() => {
-            const err = new Error(
-                'Image loading timed out'
-            );
-            err.status = 0;
-            reject(err);
-        }, TOTAL_TIMEOUT)
-    );
-
-    try {
-        const result = await Promise.race([
-            (async () => {
-
-                // --------------------------------------------------
-                // Cache attempt #1
-                // --------------------------------------------------
-                let blob = await withTimeout(
-                    attemptCache(url),
-                    CACHE_TIMEOUT
-                );
-
-                if (blob) {
-                    return {
-                        blob,
-                        fromCache: true
-                    };
-                }
-
-                // --------------------------------------------------
-                // Small delay before second cache attempt
-                // --------------------------------------------------
-                await new Promise(resolve =>
-                    setTimeout(resolve, RETRY_DELAY)
-                );
-
-                // --------------------------------------------------
-                // Cache attempt #2
-                // --------------------------------------------------
-                blob = await withTimeout(
-                    attemptCache(url),
-                    CACHE_TIMEOUT
-                );
-
-                if (blob) {
-                    return {
-                        blob,
-                        fromCache: true
-                    };
-                }
-
-                // --------------------------------------------------
-                // Network:
-                // jsDelivr → Statically on ANY error
-                // --------------------------------------------------
-                const fallbackUrl = url.replace(
-                    CONFIG.CDN_BASE_URL,
-                    CONFIG.FALLBACK_CDN_BASE_URL
-                );
-
-                const response = await networkFetchWithFallback(
-                    url,
-                    fallbackUrl
-                );
-
-                const cache = await caches.open('ff-icons');
-
-                const clonedResponse = response.clone();
-
-                cache.put(url, clonedResponse).catch(() => {});
-
-                const dataBlob = await response.blob();
-
-                if (!dataBlob || dataBlob.size === 0) {
-                    const emptyBlobError = new Error(
-                        'Empty blob from CDN'
-                    );
-                    emptyBlobError.status = 0;
-                    throw emptyBlobError;
-                }
-
-                return {
-                    blob: dataBlob,
-                    fromCache: false
-                };
-            })(),
-
-            overallTimeout
-        ]);
-
-        return result;
-
-    } catch (err) {
-        throw err;
-    }
-}
-
-function withTimeout(promise, ms) {
-    return Promise.race([
-        promise,
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Cache timeout')), ms))
-    ]);
 }
 
 // --------------------------------------------------------------
@@ -2739,7 +2671,6 @@ initAnimationObserver();
 //  WEB WORKER FOR DATABASE PARSING
 // --------------------------------------------------------------
 let dbWorker = null;
-let dbWorkerProgressHandler = null;
 
 function initWorker() {
     if (window.Worker) {
@@ -2763,15 +2694,11 @@ function parseDatabaseWithWorker(rawData) {
             reject(new Error('Worker not available'));
             return;
         }
-        if (dbWorkerProgressHandler) {
-            dbWorker.removeEventListener('message', dbWorkerProgressHandler);
-            dbWorkerProgressHandler = null;
-        }
         const handler = (e) => {
-            const { type, rawData, items, updatedOn, message } = e.data;
+            const { type, items, updatedOn, message } = e.data;
             if (type === 'success') {
                 dbWorker.removeEventListener('message', handler);
-                resolve({ rawData, items, updatedOn });
+                resolve({ items, updatedOn });
             } else if (type === 'error') {
                 dbWorker.removeEventListener('message', handler);
                 reject(new Error(message || 'Worker error'));
@@ -2795,50 +2722,26 @@ function rebuildItemsMap() {
 }
 
 // --------------------------------------------------------------
-//  DATABASE SYNC & PARSING LOGIC (UPDATED with fallback)
+//  DATABASE STATE – unified setter
 // --------------------------------------------------------------
-function parseAndSetDatabase(uint8Array) {
-    try {
-        const decoded = MessagePack.decode(uint8Array);
-        if (Array.isArray(decoded)) {
-            if (decoded.length > 0 && typeof decoded[0] === 'object' && decoded[0] !== null && (decoded[0]
-                .updated_on || decoded[0].version || decoded[0]._metadata)) {
-                metadataObj = decoded[0];
-            rawDbUpdatedOnText = metadataObj.updated_on || metadataObj.version || "Unknown";
-            allItems = decoded.slice(1);
-                } else {
-                    metadataObj = { updated_on: "Unknown" };
-                    allItems = decoded;
-                    rawDbUpdatedOnText = "Unknown";
-                }
-        } else if (typeof decoded === 'object' && decoded !== null) {
-            metadataObj = { updated_on: decoded.updated_on || "Unknown" };
-            allItems = decoded.items || decoded.data || [];
-            rawDbUpdatedOnText = metadataObj.updated_on;
-        } else {
-            metadataObj = { updated_on: "Unknown" };
-            allItems = [];
-            rawDbUpdatedOnText = "Unknown";
-        }
+function setDatabaseState(items, updatedOn) {
+    allItems = items;
+    rawDbUpdatedOnText = updatedOn || "Unknown";
+    metadataObj = { updated_on: rawDbUpdatedOnText };
+    dbUpdatedOnText = formatDatabaseDate(rawDbUpdatedOnText);
+    document.getElementById('dbVersionUI').textContent = rawDbUpdatedOnText;
 
-        rebuildItemsMap();
-
-        dbUpdatedOnText = formatDatabaseDate(rawDbUpdatedOnText);
-        document.getElementById('dbVersionUI').textContent = rawDbUpdatedOnText;
-
-        populateTagFilter(allItems);
-
-        totalItemsCount = allItems.length;
-        applyFilters();
-        updateStatusBar(); // update total and dot
-
-        return true;
-    } catch (err) {
-        console.error("Parsing Msgpack error:", err);
-        return false;
-    }
+    rebuildItemsMap();
+    populateTagFilter(allItems);
+    totalItemsCount = allItems.length;
+    applyFilters();   // applyFilters already calls updateFavUI()
+    updateStatusBar();
+    // updateFavUI() is called inside applyFilters()
 }
 
+// --------------------------------------------------------------
+//  DATABASE SYNC & PARSING LOGIC – Caches parsed data, not raw
+// --------------------------------------------------------------
 async function initDatabase(forceSync = false) {
     grid.innerHTML = '';
     paginationContainer.style.display = 'none';
@@ -2850,14 +2753,16 @@ async function initDatabase(forceSync = false) {
     document.getElementById('dlDbNormal').style.display = 'none';
     document.getElementById('dlDbSpinner').style.display = 'block';
 
+    // 1. Try to load parsed cache
     const cache = await getLocalCache();
     const now = Date.now();
     const isFresh = cache && cache.timestamp && (now - cache.timestamp < ONE_DAY_MS);
     const oldVersion = rawDbUpdatedOnText;
 
-    if (!forceSync && isFresh && cache.rawData) {
+    // If cache exists and is fresh and not force sync, use it directly
+    if (!forceSync && cache && isFresh && cache.items && Array.isArray(cache.items)) {
         loadingText.textContent = 'Loading data...';
-        parseAndSetDatabase(cache.rawData);
+        setDatabaseState(cache.items, cache.updatedOn || "Unknown");
         loadingOverlay.classList.remove('active');
         restoreButtons();
 
@@ -2866,16 +2771,15 @@ async function initDatabase(forceSync = false) {
             showCreditToastIfNeeded();
             if (!localStorage.getItem('ff_visited')) {
                 localStorage.setItem('ff_visited', 'true');
-                setTimeout(() => showWhatsNew(true), 500);
+                setTimeout(() => showWhatsNew(), 500);
             }
-            // Schedule auto tutorial (will show after 2 seconds if conditions are met)
             scheduleTutorialAutoShow();
         }
-
         syncModalsFromUrl();
         return;
     }
 
+    // 2. Cache is absent, expired, or force sync → fetch fresh
     const useWorker = dbWorker !== null;
     loadingText.textContent = 'Getting latest database...';
 
@@ -2900,11 +2804,10 @@ async function initDatabase(forceSync = false) {
         let items = null;
         let updatedOn = null;
 
-        // Fetch with fallback using fetchWithFallback (no worker network)
         const response = await fetchWithFallback(
             CONFIG.DATABASE_URL + '?nocache=' + Date.now(),
             CONFIG.FALLBACK_DATABASE_URL + '?nocache=' + Date.now(),
-            { timeout: 15000 } // generous timeout for database download
+            { timeout: 15000 }
         );
 
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -2943,17 +2846,9 @@ async function initDatabase(forceSync = false) {
         if (!items) throw new Error('Failed to parse data');
 
         loadingText.textContent = 'Loading data...';
-        allItems = items;
-        metadataObj = { updated_on: updatedOn || "Unknown" };
-        rawDbUpdatedOnText = updatedOn || "Unknown";
-        rebuildItemsMap();
-        dbUpdatedOnText = formatDatabaseDate(rawDbUpdatedOnText);
-        document.getElementById('dbVersionUI').textContent = rawDbUpdatedOnText;
+        setDatabaseState(items, updatedOn || "Unknown");
 
-        populateTagFilter(allItems);
-        totalItemsCount = allItems.length;
-
-        await saveLocalCache(rawData);
+        await saveLocalCache(allItems, rawDbUpdatedOnText);
 
         if (forceSync) {
             if (oldVersion !== "Unknown" && oldVersion === rawDbUpdatedOnText) {
@@ -2968,19 +2863,19 @@ async function initDatabase(forceSync = false) {
             showCreditToastIfNeeded();
             if (!localStorage.getItem('ff_visited')) {
                 localStorage.setItem('ff_visited', 'true');
-                setTimeout(() => showWhatsNew(true), 500);
+                setTimeout(() => showWhatsNew(), 500);
             }
-            // Schedule auto tutorial (will show after 2 seconds if conditions are met)
             scheduleTutorialAutoShow();
         }
 
-        applyFilters();
-        updateStatusBar(); // ensure total is shown
     } catch (err) {
         console.warn("Failed to fetch fresh database:", err);
         if (forceSync) showToast("Database offline");
-        if (cache && cache.rawData) {
-            parseAndSetDatabase(cache.rawData);
+
+        // Fallback to cache even if expired or any error
+        if (cache && cache.items && Array.isArray(cache.items)) {
+            setDatabaseState(cache.items, cache.updatedOn || "Unknown");
+            if (forceSync) showToast("Using cached data (offline)");
         } else {
             grid.innerHTML = '<p style="text-align:center; grid-column:1/-1; color:#ff4c4c;">⚠️ Failed to load database. Please check connection.</p>';
         }
@@ -3018,8 +2913,7 @@ function applyFilters() {
 
     let sourceItems = allItems;
     if (favFilterActive) {
-        const favIds = getFavorites().map(f => f.id);
-        sourceItems = allItems.filter(item => favIds.includes(String(item.itemID)));
+        sourceItems = allItems.filter(item => favoriteIds.has(String(item.itemID)));
     }
 
     filteredItems = sourceItems.filter(item => {
@@ -3057,13 +2951,10 @@ function applyFilters() {
 
     totalPagesUI.textContent = totalPages;
 
-    updateStatusBar(); // update filtered count
+    updateStatusBar();
 
     renderPage();
 
-    // Always return to the top after a search/filter change.
-    // Use instant scrolling so mobile keyboard viewport changes
-    // cannot fight against a smooth-scroll animation.
     requestAnimationFrame(() => {
         window.scrollTo({ top: 0, behavior: 'auto' });
     });
@@ -3160,15 +3051,10 @@ function renderPage(direction) {
     }
 }
 
-// ================================================================
-//  FIX #2: Pagination scrolling – horizontal only, no vertical
-// ================================================================
 function scrollPaginationToActive() {
     const activeBtn = pageNumbersEl.querySelector('.page-btn.active');
     if (!activeBtn) return;
 
-    // Horizontally center the active page button WITHOUT
-    // allowing the browser to vertically scroll the document.
     const targetScrollLeft =
         activeBtn.offsetLeft -
         (pageNumbersEl.clientWidth - activeBtn.offsetWidth) / 2;
@@ -3215,89 +3101,13 @@ function buildItemCards(items) {
             img.classList.remove('loaded', 'is-fallback');
             reloadBtn.classList.remove('visible');
             reloadBtn.style.display = 'none';
-            loadCardImage(img, item, reloadBtn);
+            loadImageForElement(img, item, reloadBtn);
         });
 
         imgContainer.appendChild(img);
         imgContainer.appendChild(reloadBtn);
 
-        function loadCardImage(imgEl, item, btn) {
-            const url = imgEl.dataset.originalUrl;
-            loadImageWithRetry(url)
-                .then(({ blob, fromCache }) => {
-                    const objectUrl = URL.createObjectURL(blob);
-                    imgEl.dataset.objectUrl = objectUrl;
-
-                    const markLoaded = () => {
-                        if (imgEl.dataset.loaded === 'true') return;
-                        imgEl.dataset.loaded = 'true';
-                        requestAnimationFrame(() => {
-                            requestAnimationFrame(() => {
-                                imgEl.classList.add('loaded');
-                                if (!imgEl.classList.contains('is-fallback')) {
-                                    btn.classList.remove('visible');
-                                    btn.style.display = 'none';
-                                }
-                            });
-                        });
-                    };
-
-                    imgEl.onload = markLoaded;
-                    imgEl.onerror = (ev) => {
-                        const fallbackUrl = getFallbackUrl(ev);
-                        imgEl.src = fallbackUrl;
-                        imgEl.classList.add('is-fallback');
-                        btn.classList.add('visible');
-                        btn.style.display = 'flex';
-                        markLoaded();
-                    };
-
-                    imgEl.src = objectUrl;
-
-                    if (imgEl.complete && imgEl.naturalWidth > 0) {
-                        if (imgEl.decode) {
-                            imgEl.decode().then(markLoaded).catch(() => markLoaded());
-                        } else {
-                            markLoaded();
-                        }
-                    } else {
-                        if (imgEl.decode) {
-                            imgEl.decode().then(markLoaded).catch(() => {});
-                        }
-                    }
-
-                    if (!fromCache) {
-                        recordImageSize(blob.size);
-                        if (currentIconStorageSize + pendingSizeAdd > (iconStorageLimitMB * 1024 * 1024)) {
-                            flushStorageUpdate();
-                            checkAndCleanStorage();
-                        }
-                    }
-                })
-                .catch(err => {
-                    console.warn('Failed to load image:', url, err);
-                    const fallbackUrl = getFallbackUrl(err);
-                    imgEl.src = fallbackUrl;
-                    imgEl.classList.add('is-fallback');
-                    btn.classList.add('visible');
-                    btn.style.display = 'flex';
-
-                    const markLoaded = () => {
-                        if (imgEl.dataset.loaded === 'true') return;
-                        imgEl.dataset.loaded = 'true';
-                        requestAnimationFrame(() => {
-                            requestAnimationFrame(() => {
-                                imgEl.classList.add('loaded');
-                            });
-                        });
-                    };
-                    imgEl.onload = markLoaded;
-                    imgEl.onerror = markLoaded;
-                    setTimeout(markLoaded, 3000);
-                });
-        }
-
-        loadCardImage(img, item, reloadBtn);
+        loadImageForElement(img, item, reloadBtn);
 
         const starBtn = document.createElement('button');
         starBtn.className = 'star-btn';
@@ -3344,6 +3154,99 @@ function buildItemCards(items) {
         frag.appendChild(card);
     });
     return frag;
+}
+
+// --------------------------------------------------------------
+//  COMMON IMAGE LOADER FOR CARD & MODAL
+// --------------------------------------------------------------
+function loadImageForElement(imgEl, item, reloadBtn) {
+    const url = imgEl.dataset.originalUrl;
+    const cacheName = 'ff-icons';
+    const fallbackUrl = url.replace(CONFIG.CDN_BASE_URL, CONFIG.FALLBACK_CDN_BASE_URL);
+
+    loadImageWithRetry(url, { fallbackUrl, cacheName })
+        .then(({ blob, fromCache }) => {
+            const objectUrl = URL.createObjectURL(blob);
+            setImageBlob(imgEl, objectUrl);
+
+            const markLoaded = () => {
+                if (imgEl.dataset.loaded === 'true') return;
+                imgEl.dataset.loaded = 'true';
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        imgEl.classList.add('loaded');
+                        if (!imgEl.classList.contains('is-fallback')) {
+                            reloadBtn.classList.remove('visible');
+                            reloadBtn.style.display = 'none';
+                        }
+                    });
+                });
+            };
+
+            imgEl.onload = markLoaded;
+            imgEl.onerror = (ev) => {
+                const fallbackUrl = getFallbackUrl(ev);
+                imgEl.src = fallbackUrl;
+                imgEl.classList.add('is-fallback');
+                reloadBtn.classList.add('visible');
+                reloadBtn.style.display = 'flex';
+                markLoaded();
+            };
+
+            imgEl.src = objectUrl;
+
+            if (imgEl.complete && imgEl.naturalWidth > 0) {
+                if (imgEl.decode) {
+                    imgEl.decode().then(markLoaded).catch(() => markLoaded());
+                } else {
+                    markLoaded();
+                }
+            } else {
+                if (imgEl.decode) {
+                    imgEl.decode().then(markLoaded).catch(() => {});
+                }
+            }
+
+            if (!fromCache) {
+                recordImageSize(blob.size);
+                if (currentIconStorageSize + pendingSizeAdd > (iconStorageLimitMB * 1024 * 1024)) {
+                    flushStorageUpdate();
+                    checkAndCleanStorage();
+                }
+            }
+        })
+        .catch(err => {
+            console.warn('Failed to load image:', url, err);
+            const fallbackUrl = getFallbackUrl(err);
+            imgEl.src = fallbackUrl;
+            imgEl.classList.add('is-fallback');
+            reloadBtn.classList.add('visible');
+            reloadBtn.style.display = 'flex';
+
+            const markLoaded = () => {
+                if (imgEl.dataset.loaded === 'true') return;
+                imgEl.dataset.loaded = 'true';
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        imgEl.classList.add('loaded');
+                    });
+                });
+            };
+            imgEl.onload = markLoaded;
+            imgEl.onerror = markLoaded;
+            setTimeout(markLoaded, 3000);
+        });
+}
+
+// --------------------------------------------------------------
+//  OBJECT URL HELPER
+// --------------------------------------------------------------
+function setImageBlob(img, objectUrl) {
+    if (img.dataset.objectUrl) {
+        URL.revokeObjectURL(img.dataset.objectUrl);
+    }
+    img.dataset.objectUrl = objectUrl;
+    img.src = objectUrl;
 }
 
 // --------------------------------------------------------------
@@ -3410,7 +3313,6 @@ function goToPage(pageNum) {
     updatePaginationUI();
     scrollPaginationToActive();
     window.scrollTo({ top: 0, behavior: 'auto' });
-    // No extra scrollIntoView – pagination only horizontal
 }
 
 document.getElementById('btnPrev').addEventListener('click', () => {
@@ -3421,7 +3323,7 @@ document.getElementById('btnNext').addEventListener('click', () => {
 });
 
 let isDown = false,
-startX, scrollLeft;
+    startX, scrollLeft;
 pageNumbersEl.addEventListener('mousedown', (e) => {
     isDown = true;
     startX = e.pageX - pageNumbersEl.offsetLeft;
@@ -3638,19 +3540,15 @@ let tutorialDismissed = localStorage.getItem('ff_tutorial_dismissed') === 'true'
 let tutorialAutoTimer = null;
 let tutorialTouchBlocked = false;
 
-// Show overlay – waits for Hayato image to load
 async function showTutorialOverlay(manual = false) {
     if (!manual && tutorialDismissed) return;
     const overlay = document.getElementById('tutorialOverlay');
     if (!overlay) return;
 
-    // Wait for image to load or fail
     const loaded = await loadHayatoImage();
 
-    // Show overlay only after image is ready (or if it failed)
     overlay.style.display = 'flex';
 
-    // If not manual, block touch for 0.5 seconds to prevent accidental dismissal
     if (!manual) {
         tutorialTouchBlocked = true;
         setTimeout(() => {
@@ -3659,12 +3557,10 @@ async function showTutorialOverlay(manual = false) {
     }
 
     if (!loaded) {
-        // Image failed – short toast
         showToast('Hayato image unavailable. Tap to open tutorial.');
     }
 }
 
-// Hide overlay
 function hideTutorialOverlay(setDismissed = false) {
     const overlay = document.getElementById('tutorialOverlay');
     if (overlay) overlay.style.display = 'none';
@@ -3674,7 +3570,6 @@ function hideTutorialOverlay(setDismissed = false) {
     }
 }
 
-// Load Hayato image – returns boolean indicating success
 async function loadHayatoImage() {
     const img = document.getElementById('hayatoImage');
     const url = CONFIG.HAYATO_IMAGE_URL;
@@ -3685,7 +3580,6 @@ async function loadHayatoImage() {
     let cachedBlob = null;
     let cache = null;
 
-    // 1. Try to get from cache
     try {
         cache = await caches.open(cacheName);
         const cachedResponse = await cache.match(cacheKey);
@@ -3694,17 +3588,14 @@ async function loadHayatoImage() {
         }
     } catch (e) { /* ignore */ }
 
-    // 2. If cached, use it immediately and refresh in background
     if (cachedBlob) {
         const objectUrl = URL.createObjectURL(cachedBlob);
-        img.src = objectUrl;
-        img.dataset.objectUrl = objectUrl;
+        setImageBlob(img, objectUrl);
         img.style.display = 'block';
         refreshHayatoInBackground();
         return true;
     }
 
-    // 3. No cache – fetch fresh and wait
     try {
         const response = await fetchWithFallback(
             url + '?nocache=' + Date.now(),
@@ -3716,8 +3607,7 @@ async function loadHayatoImage() {
             await cache.put(cacheKey, new Response(blob));
         }
         const objectUrl = URL.createObjectURL(blob);
-        img.src = objectUrl;
-        img.dataset.objectUrl = objectUrl;
+        setImageBlob(img, objectUrl);
         img.style.display = 'block';
         return true;
     } catch (err) {
@@ -3727,7 +3617,6 @@ async function loadHayatoImage() {
     }
 }
 
-// Refresh Hayato in background without blocking
 async function refreshHayatoInBackground() {
     try {
         const response = await fetchWithFallback(
@@ -3738,24 +3627,20 @@ async function refreshHayatoInBackground() {
         const blob = await response.blob();
         const cache = await caches.open('ff-tutorial-images');
         await cache.put('hayato', new Response(blob));
-        // Update displayed image if overlay is still open
         const img = document.getElementById('hayatoImage');
         const overlay = document.getElementById('tutorialOverlay');
         if (overlay && overlay.style.display === 'flex') {
             const objectUrl = URL.createObjectURL(blob);
             if (img.dataset.objectUrl) URL.revokeObjectURL(img.dataset.objectUrl);
-            img.src = objectUrl;
-            img.dataset.objectUrl = objectUrl;
+            setImageBlob(img, objectUrl);
         }
     } catch (_) { /* ignore */ }
 }
 
-// Overlay click handler – opens tutorial modal
 document.addEventListener('click', function(e) {
     const overlay = document.getElementById('tutorialOverlay');
     if (!overlay || overlay.style.display === 'none') return;
 
-    // Ignore clicks if touch is blocked (auto-show first 0.5 sec)
     if (tutorialTouchBlocked) {
         e.preventDefault();
         e.stopPropagation();
@@ -3772,53 +3657,38 @@ document.addEventListener('click', function(e) {
     }
 });
 
-// Dismiss button – also set flag
 document.getElementById('tutorialDismissBtn')?.addEventListener('click', function(e) {
     e.stopPropagation();
     hideTutorialOverlay(true);
 });
 
-// Manual play button
 document.getElementById('playTutorialBtn')?.addEventListener('click', function() {
     closeModal('settingsModal');
     showTutorialOverlay(true);
 });
 
-// ================================================================
-//  🆕 SCHEDULE AUTO TUTORIAL SHOW
-// ================================================================
 function scheduleTutorialAutoShow() {
-    // Don't schedule if already dismissed
     if (tutorialDismissed) return;
 
-    // Clear any pending timer
     if (tutorialAutoTimer) {
         clearTimeout(tutorialAutoTimer);
         tutorialAutoTimer = null;
     }
 
-    // Check if conditions are ready:
-    // - no loading overlay
-    // - no modals open
-    // - initial load done (grid populated)
     const isReady = !loadingOverlay.classList.contains('active') &&
-                    activeModalStack.length === 0 &&
-                    initialLoadDone &&
-                    allItems.length > 0;
+        activeModalStack.length === 0 &&
+        initialLoadDone &&
+        allItems.length > 0;
 
     if (isReady) {
-        // Start 2-second countdown
         tutorialAutoTimer = setTimeout(() => {
-            // Re-check just before showing (user might have opened a modal in the meantime)
             if (!tutorialDismissed && !loadingOverlay.classList.contains('active') && activeModalStack.length === 0) {
-                showTutorialOverlay(false);   // auto mode (touch block enabled)
+                showTutorialOverlay(false);
             } else {
-                // Conditions changed – try again later
                 scheduleTutorialAutoShow();
             }
         }, 2000);
     } else {
-        // Not ready – check again after 500ms
         tutorialAutoTimer = setTimeout(() => {
             scheduleTutorialAutoShow();
         }, 500);
@@ -3832,7 +3702,6 @@ async function openTutorialModal() {
     const content = document.getElementById('reportContent');
     const footer = document.getElementById('reportFooter');
 
-    // Remove whatsnew-mode if present, add tutorial-mode
     if (content) {
         content.classList.remove('whatsnew-mode');
         content.classList.add('tutorial-mode');
@@ -3852,15 +3721,12 @@ async function openTutorialModal() {
         const markdown = await fetchTutorialMarkdown();
         const html = parseTutorialMarkdown(markdown);
         content.innerHTML = html;
-        // Ensure tutorial-mode is still applied
         content.classList.add('tutorial-mode');
         loadTutorialImages(content);
 
-        // Add close button to footer
         document.getElementById('reportFooter').innerHTML = `<button class="whatsnew-close-btn" onclick="closeModal('reportModal')" style="background: var(--glow); border: none; color: #fff; padding: 6px 18px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(168, 66, 255, 0.4);">CLOSE</button>`;
     } catch (err) {
         content.innerHTML = `<p class="whatsnew-error">Failed to load tutorial: ${err.message}</p>`;
-        // Also add close button in error case
         document.getElementById('reportFooter').innerHTML = `<button class="whatsnew-close-btn" onclick="closeModal('reportModal')" style="background: var(--glow); border: none; color: #fff; padding: 6px 18px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(168, 66, 255, 0.4);">CLOSE</button>`;
     }
 }
@@ -3872,7 +3738,6 @@ async function openPerformanceModeModal() {
     const content = document.getElementById('reportContent');
     const footer = document.getElementById('reportFooter');
 
-    // Remove any existing mode classes, ensure it's clean
     content.classList.remove('whatsnew-mode', 'tutorial-mode');
 
     title.textContent = 'Performance Mode';
@@ -3900,11 +3765,9 @@ async function openPerformanceModeModal() {
         activeModalStack.push('reportModal');
     }
 
-    // Load the performance image
     loadPerformanceModeImage();
 }
 
-// ----- Load Performance Mode Image (cache-first, fallback) -----
 async function loadPerformanceModeImage() {
     const img = document.getElementById('perfImage');
     const spinner = document.getElementById('perfSpinner');
@@ -3918,7 +3781,6 @@ async function loadPerformanceModeImage() {
     let cachedBlob = null;
     let cache = null;
 
-    // 1. Try to get from cache
     try {
         cache = await caches.open(cacheName);
         const cachedResponse = await cache.match(cacheKey);
@@ -3927,11 +3789,9 @@ async function loadPerformanceModeImage() {
         }
     } catch (e) { /* ignore */ }
 
-    // 2. If cached, use it immediately and refresh in background
     if (cachedBlob) {
         const objectUrl = URL.createObjectURL(cachedBlob);
-        img.src = objectUrl;
-        img.dataset.objectUrl = objectUrl;
+        setImageBlob(img, objectUrl);
         img.style.display = 'block';
         spinner.style.display = 'none';
         img.onload = () => img.classList.add('loaded');
@@ -3943,7 +3803,6 @@ async function loadPerformanceModeImage() {
         return;
     }
 
-    // 3. No cache – fetch fresh and wait
     try {
         const response = await fetchWithFallback(
             url + '?nocache=' + Date.now(),
@@ -3955,8 +3814,7 @@ async function loadPerformanceModeImage() {
             await cache.put(cacheKey, new Response(blob));
         }
         const objectUrl = URL.createObjectURL(blob);
-        img.src = objectUrl;
-        img.dataset.objectUrl = objectUrl;
+        setImageBlob(img, objectUrl);
         img.style.display = 'block';
         spinner.style.display = 'none';
         img.onload = () => img.classList.add('loaded');
@@ -3974,7 +3832,6 @@ async function loadPerformanceModeImage() {
     }
 }
 
-// Refresh performance image in background without blocking
 async function refreshPerformanceImageInBackground() {
     try {
         const response = await fetchWithFallback(
@@ -3991,8 +3848,7 @@ async function refreshPerformanceImageInBackground() {
         if (img && modal && !modal.classList.contains('hidden')) {
             const objectUrl = URL.createObjectURL(blob);
             if (img.dataset.objectUrl) URL.revokeObjectURL(img.dataset.objectUrl);
-            img.src = objectUrl;
-            img.dataset.objectUrl = objectUrl;
+            setImageBlob(img, objectUrl);
             img.onload = () => img.classList.add('loaded');
             img.onerror = () => img.classList.add('loaded');
             if (img.complete && img.naturalWidth > 0) {
@@ -4038,7 +3894,6 @@ function parseTutorialMarkdown(md) {
     for (let line of lines) {
         line = line.trim();
 
-        // --- Support for explicit <br> line breaks ---
         if (line.toLowerCase() === '<br>') {
             if (inList) {
                 html += '</ul>';
@@ -4106,20 +3961,15 @@ function parseTutorialMarkdown(md) {
 
 // Helper to parse inline formatting: bold **text**, links [text](url)
 function parseInline(text) {
+    // Escape text first to prevent HTML injection
+    let escaped = escapeHtml(text);
     // Bold: **text** -> <strong>text</strong>
-    text = text.replace(/\*\*(.+?)\*\*/g, (match, p1) => `<strong>${escapeHtml(p1)}</strong>`);
+    escaped = escaped.replace(/\*\*(.+?)\*\*/g, (match, p1) => `<strong>${p1}</strong>`);
     // Links: [text](url)
-    text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, linkText, url) => {
-        return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" style="color: #2196F3; text-decoration: underline;">${escapeHtml(linkText)}</a>`;
+    escaped = escaped.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, linkText, url) => {
+        return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" style="color: #2196F3; text-decoration: underline;">${linkText}</a>`;
     });
-    return text;
-}
-
-// Helper: parse inline links [text](url)
-function parseInlineLinks(text) {
-    return text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, linkText, url) => {
-        return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" style="color: #2196F3; text-decoration: underline;">${escapeHtml(linkText)}</a>`;
-    });
+    return escaped;
 }
 
 function escapeHtml(text) {
@@ -4130,46 +3980,38 @@ function escapeHtml(text) {
 
 async function loadTutorialImages(container) {
     const placeholders = container.querySelectorAll('.tutorial-image-placeholder');
-    // Create an array of promises for each image
     const loadPromises = Array.from(placeholders).map(async (placeholder) => {
         const filename = placeholder.dataset.filename;
         const fullUrl = CONFIG.ONLINE_BASE_URL + filename;
         const fallbackUrl = CONFIG.FALLBACK_ONLINE_BASE_URL + filename;
 
-        // Create a wrapper to hold the spinner and the image
         const wrapper = document.createElement('div');
         wrapper.className = 'tutorial-image-wrapper';
         placeholder.replaceWith(wrapper);
 
-        // Show a spinner while loading
         const spinner = document.createElement('div');
         spinner.className = 'tutorial-image-spinner';
         wrapper.appendChild(spinner);
 
         try {
-            // Cache-first load
-            const { blob, fromCache } = await loadImageWithRetryForTutorial(fullUrl, fallbackUrl);
+            const { blob, fromCache } = await loadImageWithRetry(fullUrl, {
+                fallbackUrl,
+                cacheName: 'ff-tutorial-images'
+            });
             const objectUrl = URL.createObjectURL(blob);
 
             const img = document.createElement('img');
             img.alt = filename;
             img.className = 'tutorial-image';
-            img.src = objectUrl;
-            img.dataset.objectUrl = objectUrl;
+            setImageBlob(img, objectUrl);
             img.onload = () => img.classList.add('loaded');
 
-            // Replace spinner with image
             wrapper.innerHTML = '';
             wrapper.appendChild(img);
 
-            // Cache the blob if it was from network
-            if (!fromCache) {
-                const cache = await caches.open('ff-tutorial-images');
-                await cache.put(fullUrl, new Response(blob));
-            }
+            // loadImageWithRetry already caches the response; no need to put it again.
         } catch (err) {
             console.warn('Failed to load tutorial image:', filename, err);
-            // Show fallback text
             wrapper.innerHTML = '';
             const fallbackText = document.createElement('span');
             fallbackText.textContent = `<image: ${filename}>`;
@@ -4178,132 +4020,7 @@ async function loadTutorialImages(container) {
         }
     });
 
-    // Wait for all images to load in parallel
     await Promise.all(loadPromises);
-}
-
-// Variant of loadImageWithRetry for tutorial images (uses online base)
-async function loadImageWithRetryForTutorial(url, fallbackUrl) {
-    const CACHE_TIMEOUT = 2000;
-    const RETRY_DELAY = 500;
-    const TOTAL_TIMEOUT = 20000;
-
-    async function attemptCache(url) {
-        try {
-            const cache = await caches.open('ff-tutorial-images');
-            const response = await cache.match(url);
-            if (!response) return null;
-            const blob = await response.blob();
-            if (blob && blob.size > 0) return blob;
-            return null;
-        } catch (_) { return null; }
-    }
-
-    async function fetchWithTimeout(url, timeout) {
-        const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), timeout);
-        try {
-            const response = await fetch(url, { signal: controller.signal });
-            clearTimeout(id);
-            return response;
-        } catch (err) {
-            clearTimeout(id);
-            throw err;
-        }
-    }
-
-    // --------------------------------------------------------------
-    //  REPLACED internal networkFetchWithFallback – tries fallback on ANY error
-    // --------------------------------------------------------------
-    async function networkFetchWithFallback(primaryUrl, fallbackUrl) {
-        let primaryError = null;
-
-        // ----------------------------------------------------------
-        // 1. Try primary CDN
-        // ----------------------------------------------------------
-        try {
-            const response = await fetchWithTimeout(primaryUrl, 15000);
-
-            if (response.ok) {
-                return response;
-            }
-
-            primaryError = new Error(
-                `Primary CDN returned HTTP ${response.status}`
-            );
-            primaryError.status = response.status;
-
-        } catch (err) {
-            if (err.name === 'AbortError') {
-                primaryError = new Error(
-                    'Primary CDN request timed out'
-                );
-            } else {
-                primaryError = new Error(
-                    `Primary CDN network error: ${err.message}`
-                );
-            }
-
-            primaryError.status = 0;
-        }
-
-        // ----------------------------------------------------------
-        // 2. ALWAYS try Statically after ANY primary error
-        // ----------------------------------------------------------
-        if (fallbackUrl) {
-            try {
-                const fallbackResponse = await fetchWithTimeout(
-                    fallbackUrl,
-                    8000
-                );
-
-                if (fallbackResponse.ok) {
-                    return fallbackResponse;
-                }
-
-                console.warn(
-                    `Tutorial fallback CDN returned HTTP ${fallbackResponse.status}`
-                );
-
-            } catch (fallbackErr) {
-                console.warn(
-                    'Tutorial fallback CDN network error:',
-                    fallbackErr
-                );
-            }
-        }
-
-        // ----------------------------------------------------------
-        // 3. Both failed → preserve PRIMARY error
-        // ----------------------------------------------------------
-        throw primaryError;
-    }
-
-    const overallTimeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('loadImageWithRetry total timeout')), TOTAL_TIMEOUT)
-    );
-
-    try {
-        const result = await Promise.race([
-            (async () => {
-                let blob = await withTimeout(attemptCache(url), CACHE_TIMEOUT);
-                if (blob) return { blob, fromCache: true };
-
-                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-                blob = await withTimeout(attemptCache(url), CACHE_TIMEOUT);
-                if (blob) return { blob, fromCache: true };
-
-                const response = await networkFetchWithFallback(url, fallbackUrl);
-                const dataBlob = await response.blob();
-                if (!dataBlob || dataBlob.size === 0) throw new Error('Empty blob from network');
-                return { blob: dataBlob, fromCache: false };
-            })(),
-            overallTimeout
-        ]);
-        return result;
-    } catch (err) {
-        throw err;
-    }
 }
 
 // --------------------------------------------------------------
@@ -4323,7 +4040,6 @@ function updateSettingsScrollDown() {
     }
 }
 
-// Click handler for scroll-down button
 document.getElementById('settingsScrollDownBtn')?.addEventListener('click', function() {
     const body = document.querySelector('.settings-body');
     if (body) {
@@ -4335,9 +4051,9 @@ document.getElementById('settingsScrollDownBtn')?.addEventListener('click', func
 //  STARTUP INITIALIZATION
 // --------------------------------------------------------------
 window.addEventListener('DOMContentLoaded', async () => {
-    // Fetch WebApp version (cached if offline) – must be done early
     await fetchSWVersion();
 
+    loadFavorites();
     loadFavState();
 
     if (sessionStorage.getItem('webapp_updated') === 'true') {
@@ -4354,7 +4070,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         setTimeout(() => {
             showToast(`Updated to WebApp version: ${versionMsg}`);
             setTimeout(() => {
-                showWhatsNew(false);
+                showWhatsNew();
             }, 500);
         }, 300);
     } else {
@@ -4376,20 +4092,12 @@ window.addEventListener('DOMContentLoaded', async () => {
     typeFilter.addEventListener('change', applyFilters);
     rareFilter.addEventListener('change', applyFilters);
 
-    // ---- ADDED: close settings modal via footer button ----
     document.getElementById('settingsCloseBtn')?.addEventListener('click', () => {
         closeModal('settingsModal');
     });
 
-    // ---- ADDED: Performance Mode info button ----
     document.getElementById('performanceInfoBtn')?.addEventListener('click', function(e) {
         e.stopPropagation();
         openPerformanceModeModal();
     });
 });
-
-const origInitDatabase = initDatabase;
-initDatabase = async function(forceSync) {
-    await origInitDatabase(forceSync);
-    updateFavUI();
-};
