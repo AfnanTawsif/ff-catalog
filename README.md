@@ -39,7 +39,7 @@ The app checks for a new database every 24 hours, and you can force a sync anyti
   - Database is stored in IndexedDB for fast subsequent loads.
 
 **📡 Bandwidth & Server-Cost Friendly**
-  - All static assets (icons, database) are served via **jsDelivr CDN**, leveraging global edge caching.
+  - All static assets (icons, database) are served via **jsDelivr CDN**, leveraging global edge caching & falls back to **Statically CDN** when jsDelivr fails- ensuring almost 100% uptime.
   - The app itself is hosted on Netlify, but because almost everything runs on the client, your Netlify credits are barely consumed.
   - Service Worker updates pull new versions only when `sw.js` changes – no unnecessary network requests.
 
