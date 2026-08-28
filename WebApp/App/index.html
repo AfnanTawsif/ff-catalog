@@ -190,7 +190,7 @@
         }
 
         .status-dot.mode-performance.glow {
-            animation: pulse-dot-red 2s ease-in-out infinite;
+            animation: pulse-dot-blue 2s ease-in-out infinite;
         }
 
         /* Mode background colors */
@@ -199,8 +199,44 @@
         }
 
         .status-dot.mode-performance {
-            background-color: #f44336; /* red */
+            background-color: #2196F3; /* blue */
         }
+
+        /* Filtered state – red with red glow */
+        .status-dot.filtered.glow {
+            animation: pulse-dot-red 2s ease-in-out infinite;
+        }
+        .status-dot.filtered {
+            background: #f44336;
+        }
+
+        /* Ensure reduce-effects overrides everything */
+        body.reduce-effects .status-dot.filtered.glow {
+            animation: none !important;
+            box-shadow: none !important;
+            opacity: 0.7;
+        }
+
+        /* Favorites state – yellow with yellow glow */
+        .status-dot.favorites.glow {
+            animation: pulse-dot-yellow 2s ease-in-out infinite;
+        }
+        .status-dot.favorites {
+            background: #FFD700;
+        }
+
+        @keyframes pulse-dot-yellow {
+            0%, 100% { box-shadow: 0 0 8px 2px rgba(255, 215, 0, 0.8); }
+            50% { box-shadow: 0 0 14px 4px rgba(255, 215, 0, 0.4); }
+        }
+
+        /* Ensure reduce-effects overrides yellow glow too */
+        body.reduce-effects .status-dot.favorites.glow {
+            animation: none !important;
+            box-shadow: none !important;
+            opacity: 0.7;
+        }
+
 
         /* ---- Keyframes ---- */
         @keyframes pulse-dot-purple {
@@ -211,6 +247,10 @@
         @keyframes pulse-dot-green {
             0%, 100% { box-shadow: 0 0 8px 2px rgba(76, 175, 80, 0.8); }
             50% { box-shadow: 0 0 14px 4px rgba(76, 175, 80, 0.4); }
+        }
+        @keyframes pulse-dot-blue {
+            0%, 100% { box-shadow: 0 0 8px 2px rgba(33, 150, 243, 0.8); }
+            50% { box-shadow: 0 0 14px 4px rgba(33, 150, 243, 0.4); }
         }
 
         @keyframes pulse-dot-red {
@@ -284,6 +324,8 @@
             align-items: center;
             justify-content: center;
             transition: transform 0.3s var(--ease-out-back), background 0.3s ease;
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
         }
         body.reduce-effects .settings-btn,
         body.reduce-effects .reload-btn {
@@ -425,9 +467,19 @@
         }
 
         /* ----- SEARCH WRAPPER with icon & clear button ----- */
+        /* UPDATED: flex layout with fixed height to prevent shrinking */
         .search-wrapper {
             position: relative;
             width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .search-input-wrap {
+            flex: 1;
+            min-width: 0;
+            position: relative;
         }
 
         .search-bar {
@@ -439,27 +491,24 @@
             color: var(--text-main);
             font-size: 15px;
             outline: none;
-            transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
         }
+        
         body.reduce-effects .search-bar {
             background: #1a1a1a;
             transition: none;
-            transform: none !important;
         }
         .search-bar:focus {
             border-color: var(--glow);
             box-shadow: 0 0 10px rgba(168, 66, 255, 0.3);
-            transform: translateY(-1px);
         }
         body.reduce-effects .search-bar:focus {
             box-shadow: none !important;
-            transform: none !important;
         }
 
         .search-icon,
         .search-clear {
             position: absolute;
-            right: 12px;
             top: 50%;
             transform: translateY(-50%);
             display: flex;
@@ -467,9 +516,11 @@
             justify-content: center;
             width: 24px;
             height: 24px;
-            pointer-events: none;
             color: var(--text-muted);
             transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+        .search-icon {
+            right: 12px;     
         }
         body.reduce-effects .search-icon,
         body.reduce-effects .search-clear {
@@ -484,6 +535,7 @@
         }
 
         .search-clear {
+            right: 12px;         /* stays on right */
             pointer-events: auto;
             cursor: pointer;
             border: none;
@@ -517,42 +569,52 @@
             fill: var(--text-muted);
         }
 
-        .filters-row {
+        /* ----- VISIBILITY TOGGLE (chevron) ----- */
+        .filter-visibility-toggle {
+            width: 30px;
+            height: 48px;
+            padding: 0;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
             display: flex;
+            align-items: center;
             justify-content: center;
-            gap: 10px;
-            flex-wrap: nowrap;
-            width: 100%;
-            align-items: stretch;
-        }
-
-        .filters-row select {
-            background: rgba(26, 26, 26, 0.8);
-            color: var(--text-main);
-            border: 1px solid var(--border);
-            padding: 8px 10px;
-            border-radius: 6px;
-            outline: none;
             cursor: pointer;
-            font-size: 13px;
-            flex: 1 1 auto;
-            min-width: 0;
-            text-align: center;
-            text-align-last: center;
-            text-overflow: ellipsis;
-            transition: all 0.2s ease;
+            flex-shrink: 0;
+            transition: color 0.2s ease, transform 0.2s ease;
         }
-        body.reduce-effects .filters-row select {
-            background: #1a1a1a;
+        .filter-visibility-toggle:hover,
+        .filter-visibility-toggle:focus,
+        .filter-visibility-toggle:focus-visible {
+            color: var(--text-muted);   /* always subtle, never white */
+            transform: scale(1.05);
+            outline: none;              /* optional – remove default focus ring if you want */
+        }
+        body.reduce-effects .filter-visibility-toggle:hover {
+            transform: none;
+            color: var(--text-muted);
+        }
+        .filter-visibility-toggle:active {
+            transform: scale(0.9);
+        }
+        body.reduce-effects .filter-visibility-toggle:active {
+            transform: none;
+        }
+        .filter-visibility-toggle svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+            transition: transform 0.25s ease;
+        }
+        body.reduce-effects .filter-visibility-toggle svg {
             transition: none;
         }
-        .filters-row select:hover {
-            border-color: var(--glow);
-            background: rgba(35, 35, 35, 0.9);
+        .filter-visibility-toggle svg.chevron-down {
+            transform: rotate(0deg);
         }
-        body.reduce-effects .filters-row select:hover {
-            border-color: var(--border);
-            background: #1a1a1a;
+        .filter-visibility-toggle svg.chevron-up {
+            transform: rotate(180deg);
         }
 
         /* ----- FAVORITES TOGGLE BUTTON (in filter row) ----- */
@@ -624,7 +686,45 @@
         .fav-toggle.active #favCount {
             opacity: 1;
         }
-        
+
+        .filters-row {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: nowrap;
+            width: 100%;
+            align-items: stretch;
+        }
+
+        .filters-row select {
+            background: rgba(26, 26, 26, 0.8);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 8px 10px;
+            border-radius: 6px;
+            outline: none;
+            cursor: pointer;
+            font-size: 13px;
+            flex: 1 1 auto;
+            min-width: 0;
+            text-align: center;
+            text-align-last: center;
+            text-overflow: ellipsis;
+            transition: all 0.2s ease;
+        }
+        body.reduce-effects .filters-row select {
+            background: #1a1a1a;
+            transition: none;
+        }
+        .filters-row select:hover {
+            border-color: var(--glow);
+            background: rgba(35, 35, 35, 0.9);
+        }
+        body.reduce-effects .filters-row select:hover {
+            border-color: var(--border);
+            background: #1a1a1a;
+        }
+
         /* ----- Reload Icon Button (for images) ----- */
         .reload-icon-btn {
             position: absolute;
@@ -1249,6 +1349,38 @@
         }
         .copy-tick.blue-tick {
             color: #2196F3;
+        }
+
+
+        /* ----- Card loading spinner overlay ----- */
+        .card-loader {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            z-index: 6;
+            pointer-events: none;
+            backdrop-filter: blur(2px);
+        }
+        .card-loader.show {
+            display: flex;
+        }
+        .card-loader .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid rgba(255, 255, 255, 0.2);
+            border-top: 3px solid var(--glow);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        body.reduce-effects .card-loader .spinner {
+            animation: spin 0.7s linear infinite !important;
         }
 
         /* ----- Toast Component ----- */
@@ -1968,16 +2100,16 @@
         .tab-content > .settings-section:last-child {
             margin-bottom: 0;
         }
-        
+
         /* Add a 10px bottom gap after the last section in General tab */
         #tab-general .settings-section:last-child {
             margin-bottom: 10px !important;
         }
         /* Add a 8px bottom gap after the last section in App tab only */
         #tab-app .settings-section:last-child {
-    margin-bottom: 8px !important;
+            margin-bottom: 8px !important;
         }
-        
+
         .settings-section h3 {
             font-size: 16px;
             text-transform: uppercase;
@@ -2491,7 +2623,7 @@
         .report-text.tutorial-mode h4:first-child,
         .report-text.tutorial-mode h5:first-child,
         .report-text.tutorial-mode h6:first-child {
-    margin-top: 0; /* no gap if it's the first element */
+            margin-top: 0; /* no gap if it's the first element */
         }
 
         /* Make tutorial paragraph text whiter */
@@ -2567,7 +2699,15 @@
             border-radius: inherit;
             z-index: 10;
         }
-
+        /* Keep pill background visible when focused */
+        .copyable-box:focus,
+        .copyable-box:focus-visible {
+            outline: none;
+            background: revert;
+        }
+        .copyable-box:focus:hover {
+            background: revert;
+        }
         .limit-input-group {
             display: flex;
             align-items: center;
@@ -2847,90 +2987,90 @@
 
         /* What's New modal - modern card & pill styles */
         .whatsnew-version-card {
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 16px 14px;
-        margin-bottom: 18px;
-        transition: background 0.2s ease;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px 14px;
+            margin-bottom: 18px;
+            transition: background 0.2s ease;
         }
         body.reduce-effects .whatsnew-version-card {
-        background: #1a1a1a;
-        border-color: #2a2a2a;
-        transition: none;
+            background: #1a1a1a;
+            border-color: #2a2a2a;
+            transition: none;
         }
         .whatsnew-version-card:last-child {
-        margin-bottom: 0;
+            margin-bottom: 0;
         }
 
         .whatsnew-version-header {
-        display: flex;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 10px;
-        margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 10px;
         }
 
         .version-pill {
-          display: inline-block;
-          padding: 4px 16px;
-          border-radius: 20px;
-          font-size: 14px;
-          font-weight: 700;
-          letter-spacing: 0.5px;
-          background: linear-gradient(135deg, #2a1a3a, #3a2a4a);
-          color: #fff;
-          border: 1px solid var(--glow);
-          box-shadow: 0 0 12px rgba(168, 66, 255, 0.15);
-          text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-          transition: box-shadow 0.3s ease, transform 0.2s ease;
+            display: inline-block;
+            padding: 4px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            background: linear-gradient(135deg, #2a1a3a, #3a2a4a);
+            color: #fff;
+            border: 1px solid var(--glow);
+            box-shadow: 0 0 12px rgba(168, 66, 255, 0.15);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+            transition: box-shadow 0.3s ease, transform 0.2s ease;
         }
         .whatsnew-version-card:hover .version-pill {
-          box-shadow: 0 0 20px rgba(168, 66, 255, 0.3);
-          transform: scale(1.02);
+            box-shadow: 0 0 20px rgba(168, 66, 255, 0.3);
+            transform: scale(1.02);
         }
         body.reduce-effects .version-pill {
-          background: #1a1a1a !important;
-          border-color: var(--glow) !important;
-          box-shadow: none !important;
-          transform: none !important;
-          text-shadow: none !important;
+            background: #1a1a1a !important;
+            border-color: var(--glow) !important;
+            box-shadow: none !important;
+            transform: none !important;
+            text-shadow: none !important;
         }
         body.reduce-effects .whatsnew-version-card:hover .version-pill {
-          transform: none !important;
-          box-shadow: none !important;
+            transform: none !important;
+            box-shadow: none !important;
         }
 
         .latest-pill {
-        background: var(--glow);
-        color: #fff;
-        border-color: var(--glow);
-        font-size: 12px;
-        padding: 2px 12px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        border-radius: 20px;
+            background: var(--glow);
+            color: #fff;
+            border-color: var(--glow);
+            font-size: 12px;
+            padding: 2px 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-radius: 20px;
         }
         body.reduce-effects .latest-pill {
-        background: #a842ff;
-        border-color: #a842ff;
+            background: #a842ff;
+            border-color: #a842ff;
         }
 
         .your-version-pill {
-        background: #00BCD4;
-        color: #000;
-        border-color: #00BCD4;
-        font-size: 12px;
-        padding: 2px 12px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        border-radius: 20px;
+            background: #00BCD4;
+            color: #000;
+            border-color: #00BCD4;
+            font-size: 12px;
+            padding: 2px 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-radius: 20px;
         }
         body.reduce-effects .your-version-pill {
-        background: #00BCD4;
-        border-color: #00BCD4;
+            background: #00BCD4;
+            border-color: #00BCD4;
         }
 
         .whatsnew-version-card ul {
@@ -2976,19 +3116,19 @@
 
         /* loading/error styles – keep as is */
         .whatsnew-loading {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 16px;
-        padding: 40px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            padding: 40px 0;
         }
         .whatsnew-loading .spinner {
-        width: 32px;
-        height: 32px;
-        border: 3px solid var(--border);
-        border-top-color: var(--glow);
-        border-radius: 50%;
-        animation: spin 0.7s linear infinite;
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--border);
+            border-top-color: var(--glow);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
         }
         body.reduce-effects .whatsnew-loading .spinner {
             /* animation: none removed */;
@@ -2996,14 +3136,14 @@
             border-top-color: #444;
         }
         .whatsnew-loading p {
-        color: var(--text-muted);
-        font-size: 14px;
+            color: var(--text-muted);
+            font-size: 14px;
         }
         .whatsnew-error {
-        color: #ff6b6b;
-        text-align: center;
-        padding: 20px 0;
-        font-size: 14px;
+            color: #ff6b6b;
+            text-align: center;
+            padding: 20px 0;
+            font-size: 14px;
         }
 
 
@@ -3160,7 +3300,7 @@
             font-size: 24px;
             font-weight: 700;
             color: #fff;
-            text-shadow: 0 2px 20px rgba(0,0,0,0.6);
+            text-shadow: 0 2px 20px rgba(0, 0, 0, 0.6);
             background: linear-gradient(270deg, #a842ff, #E040FB, #7B2FBE, #a842ff);
             background-size: 400% 100%;
             -webkit-background-clip: text;
@@ -3212,7 +3352,7 @@
             height: auto;
             border-radius: 8px;
             margin: 10px 0;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
             opacity: 0;
             transition: opacity 0.3s;
         }
@@ -3283,7 +3423,7 @@
             outline: none;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
         }
-    
+
         .settings-scroll-down:hover {
             background: rgba(40, 40, 40, 0.8);
             color: #fff;
@@ -3523,6 +3663,14 @@
                 height: 32px;
                 font-size: 22px;
             }
+            .filter-visibility-toggle {
+                width: 26px;
+                height: 38px;
+            }
+            .filter-visibility-toggle svg {
+                width: 16px;
+                height: 16px;
+            }
         }
 
         @media (max-width: 420px) {
@@ -3569,31 +3717,51 @@
             .filters-row .fav-toggle #favStar {
                 font-size: 14px;
             }
+            .filter-visibility-toggle {
+                width: 22px;
+                height: 34px;
+            }
+            .filter-visibility-toggle svg {
+                width: 14px;
+                height: 14px;
+            }
+            .search-bar {
+                font-size: 14px;
+                padding: 0 38px 0 14px;
+                height: 38px;
+                line-height: 38px;
+                border-radius: 20px;
+            }
+            .search-input-wrap {
+                height: 38px;
+            }
+            .search-wrapper {
+                height: 38px;
+                min-height: 38px;
+            }
+            .search-icon,
+            .search-clear {
+                right: 8px;
+                width: 20px;
+                height: 20px;
+            }
+            .search-icon svg {
+                width: 16px;
+                height: 16px;
+            }
+            .search-clear svg {
+                width: 16px;
+                height: 16px;
+            }
+            .search-wrapper {
+                gap: 4px;
+            }
         }
 
         .settings-header .title-spacer {
             margin-bottom: 18px;
         }
 
-        .reload-btn[title]:hover::after {
-            content: attr(title);
-            position: absolute;
-            bottom: -30px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.85);
-            color: #fff;
-            font-size: 11px;
-            padding: 4px 10px;
-            border-radius: 4px;
-            white-space: nowrap;
-            pointer-events: none;
-            z-index: 20;
-            border: 1px solid var(--border);
-        }
-        body.reduce-effects .reload-btn[title]:hover::after {
-            border-color: #2a2a2a;
-        }
 
         /* ====== REDUCE-EFFECTS OVERRIDES ====== */
         body.reduce-effects * {
@@ -3673,19 +3841,28 @@
 
             <h1 id="mainTitle" title="Go to Home">FREE FIRE CATALOG</h1>
 
-            <button id="reloadBtn" class="reload-btn" title="Go to Home">
+            <button id="reloadBtn" class="reload-btn">
                 <img src="icons/icon.svg" alt="Home" id="homeIcon" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2240%22 fill=%22none%22 stroke=%22%23a842ff%22 stroke-width=%2210%22/></svg>'">
             </button>
         </div>
 
         <div class="controls-wrapper">
+            <!-- ===== UPDATED SEARCH WRAPPER ===== -->
             <div class="search-wrapper">
-                <input type="text" id="searchInput" class="search-bar" placeholder="Search item..." autocomplete="off" />
-                <div class="search-icon" id="searchIcon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                <div class="search-input-wrap">
+                    <input type="text" id="searchInput" class="search-bar" placeholder="Search item..." autocomplete="off" />
+                    <div class="search-icon" id="searchIcon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                    </div>
+                    <button class="search-clear" id="searchClear" aria-label="Clear search">
+                        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                    </button>
                 </div>
-                <button class="search-clear" id="searchClear" aria-label="Clear search">
-                    <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+
+                <button id="filterVisibilityToggle" class="filter-visibility-toggle" aria-label="Toggle filters">
+                    <svg id="filterVisibilityIcon" viewBox="0 0 24 24">
+                        <path d="M4 16l8-8 8 8" stroke="currentColor" stroke-width="2" fill="none"/>
+                    </svg>
                 </button>
             </div>
 
@@ -3961,7 +4138,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- ===== GUIDE SECTION (moved from App tab) ===== -->
                     <div class="settings-section">
                         <h3>User Guide</h3>

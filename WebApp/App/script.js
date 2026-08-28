@@ -576,22 +576,76 @@ const FAV_STORAGE_KEY = 'ff_favorites';
 let favorites = [];
 let favoriteIds = new Set();
 
+// Normalization helper for favorites
+function normalizeFavoritesList(list) {
+    const normalized = Array.isArray(list)
+        ? list
+            .filter(f => f && f.id !== undefined && f.id !== null)
+            .map(f => ({
+                id: String(f.id),
+                timestamp: Number.isFinite(Number(f.timestamp))
+                    ? Number(f.timestamp)
+                    : Date.now()
+            }))
+            .filter(f => f.id.length > 0)
+        : [];
+
+    // Remove duplicate IDs while preserving the newest occurrence.
+    const seen = new Set();
+    const deduped = [];
+
+    for (let i = normalized.length - 1; i >= 0; i--) {
+        if (seen.has(normalized[i].id)) continue;
+        seen.add(normalized[i].id);
+        deduped.unshift(normalized[i]);
+    }
+
+    return deduped;
+}
+
 function loadFavorites() {
+    let list = [];
     try {
         const raw = localStorage.getItem(FAV_STORAGE_KEY);
-        const list = raw ? JSON.parse(raw) : [];
-        favorites = list;
-        favoriteIds = new Set(list.map(f => f.id));
-    } catch {
-        favorites = [];
-        favoriteIds = new Set();
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+                list = parsed;
+            }
+        }
+    } catch (e) {
+        // ignore
+    }
+    const normalized = normalizeFavoritesList(list);
+    // Check if normalized differs from original list
+    const currentRaw = JSON.stringify(list);
+    const normalizedRaw = JSON.stringify(normalized);
+    if (currentRaw !== normalizedRaw) {
+        // Persist normalized version
+        saveFavorites(normalized);
+    } else {
+        favorites = normalized;
+        favoriteIds = new Set(normalized.map(f => f.id));
+        updateFavUI(); // ensure UI reflects loaded state
     }
 }
 
+// ----- FIX #3: Normalize and sanitize imported favorites -----
 function saveFavorites(list) {
-    favorites = list;
-    favoriteIds = new Set(list.map(f => f.id));
-    localStorage.setItem(FAV_STORAGE_KEY, JSON.stringify(list));
+    const normalized = normalizeFavoritesList(list);
+
+    favorites = normalized;
+    favoriteIds = new Set(normalized.map(f => f.id));
+
+    try {
+        localStorage.setItem(
+            FAV_STORAGE_KEY,
+            JSON.stringify(normalized)
+        );
+    } catch (err) {
+        console.warn('Failed to save favorites:', err);
+    }
+
     updateFavUI();
 }
 
@@ -619,8 +673,8 @@ function getFavorites() {
 }
 
 function getFavoritedItems() {
-    const favs = getFavorites();
-    favs.sort((a, b) => b.timestamp - a.timestamp);
+    // Sort inline for clarity
+    const favs = getFavorites().sort((a, b) => b.timestamp - a.timestamp);
     const items = [];
     favs.forEach(f => {
         const item = itemsById.get(f.id);
@@ -689,9 +743,28 @@ function updateStatusBar() {
     const text = document.getElementById('statusText');
     if (!dot || !text) return;
     const filtered = filteredItems.length;
-    const total = totalItemsCount;
+    const total = favFilterActive ? favorites.length : totalItemsCount;
     text.textContent = `Showing ${filtered} of ${total} items`;
+
     const isReduced = document.body.classList.contains('reduce-effects');
+    const hasSearchOrFilters = 
+        searchInput.value.trim().length > 0 ||
+        typeFilter.value ||
+        rareFilter.value ||
+        tagFilter.value;
+
+    const isFavOnly = favFilterActive && !hasSearchOrFilters;
+
+    // Remove previous color classes
+    dot.classList.remove('filtered', 'favorites');
+
+    if (isFavOnly) {
+        dot.classList.add('favorites');
+    } else if (hasSearchOrFilters || favFilterActive) {
+        dot.classList.add('filtered');
+    }
+    // else: default purple (no extra class)
+
     if (isReduced) {
         dot.classList.remove('glow');
         dot.classList.add('no-glow');
@@ -744,6 +817,11 @@ const tagFilter = document.getElementById('tagFilter');
 const typeFilter = document.getElementById('typeFilter');
 const rareFilter = document.getElementById('rareFilter');
 
+// --- NEW: Filter pill and toggle ---
+const filterVisibilityToggle = document.getElementById('filterVisibilityToggle');
+const filterVisibilityIcon = document.getElementById('filterVisibilityIcon');
+let filtersHidden = false;
+
 const rangeName = document.getElementById('rangeName');
 const rangeID = document.getElementById('rangeID');
 const rangeDesc = document.getElementById('rangeDesc');
@@ -790,7 +868,7 @@ const reduceEffectsStatus = document.getElementById('reduceEffectsStatus');
 searchInput.addEventListener('input', function() {
     const hasValue = this.value.length > 0;
     searchClear.style.display = hasValue ? 'flex' : 'none';
-    searchIcon.style.display = hasValue ? 'none' : 'flex';
+    searchIcon.style.display = hasValue ? 'none' : 'flex';  // hide icon when typing, show when empty
 });
 
 searchClear.addEventListener('click', function() {
@@ -1372,8 +1450,11 @@ function adjustIconNameOverflow(el) {
 //  ITEM MODAL POPULATION (with reload button and cache-first download)
 // --------------------------------------------------------------
 let currentShareItemId = null;
+let modalImageLoadToken = 0;
 
 async function populateItemModal(item) {
+    const imageLoadToken = ++modalImageLoadToken;
+
     const iconUrl = CONFIG.CDN_BASE_URL + item.itemID + '.webp';
     const modalImg = document.getElementById('modalImg');
 
@@ -1423,10 +1504,10 @@ async function populateItemModal(item) {
         modalImg.classList.remove('loaded', 'is-fallback');
         modalReloadBtn.classList.remove('visible');
         modalReloadBtn.style.display = 'none';
-        loadImageForElement(modalImg, item, modalReloadBtn);
+        loadImageForElement(modalImg, item, modalReloadBtn, imageLoadToken);
     };
 
-    loadImageForElement(modalImg, item, modalReloadBtn);
+    loadImageForElement(modalImg, item, modalReloadBtn, imageLoadToken);
 
     document.getElementById('modalName').textContent = item.name || 'Unnamed';
 
@@ -1434,27 +1515,28 @@ async function populateItemModal(item) {
     iconNameEl.textContent = item.icon || 'Undefined';
     adjustIconNameOverflow(iconNameEl);
 
-    // ----- BADGES WITH COPYABLE CLASS -----
-    let badgesHTML = `<span class="badge badge-id copyable-box">ID: ${item.itemID}</span>`;
+    // ----- BADGES WITH COPYABLE CLASS (escaped) -----
+    let badgesHTML = `<span class="badge badge-id copyable-box">ID: ${escapeHtml(item.itemID)}</span>`;
     if (item.type) {
         let displayType = item.type;
         if (displayType.toLowerCase().endsWith('s')) displayType = displayType.slice(0, -1);
-        badgesHTML += `<span class="badge badge-type copyable-box">${displayType}</span>`;
+        badgesHTML += `<span class="badge badge-type copyable-box">${escapeHtml(displayType)}</span>`;
     }
     if (item.rarity) {
         const mappedName = rarityMap[item.rarity] || item.rarity;
-        badgesHTML += `<span class="badge rare-${item.rarity} copyable-box">${mappedName}</span>`;
+        badgesHTML += `<span class="badge rare-${escapeHtml(item.rarity)} copyable-box">${escapeHtml(mappedName)}</span>`;
     }
     if (item.tag) {
         const tags = item.tag.split(',').map(t => t.trim());
         tags.forEach(t => {
-            if (t) badgesHTML += `<span class="badge badge-tag copyable-box">${t}</span>`;
+            if (t) badgesHTML += `<span class="badge badge-tag copyable-box">${escapeHtml(t)}</span>`;
         });
     }
 
     document.getElementById('modalBadges').innerHTML = badgesHTML;
     document.getElementById('modalDesc').textContent = item.description || 'No description available.';
 
+    // ----- MODAL DOWNLOAD BUTTON with loading state -----
     const dlBtn = document.getElementById('modalDlBtn');
     dlBtn.onclick = () => {
         const currentDlOption = downloadAs.value;
@@ -1463,20 +1545,8 @@ async function populateItemModal(item) {
         const ext = parts[1];
         let baseName = pattern === 'icon' ? (item.icon || item.itemID) : item.itemID;
         const filename = `${baseName}.${ext}`;
-        const isPng = ext === 'png';
         const displayedSrc = modalImg.src;
-        fetchImageAsBlob(displayedSrc)
-            .then(blob => {
-                if (isPng) {
-                    return convertBlobToPng(blob);
-                } else {
-                    return blob;
-                }
-            })
-            .then(finalBlob => {
-                executeBlobDownload(finalBlob, filename);
-            })
-            .catch(() => alert('Failed to download image.'));
+        triggerDownload(displayedSrc, filename, dlBtn, null);
     };
 
     const modalStar = document.getElementById('modalStarBtn');
@@ -1507,6 +1577,9 @@ document.getElementById('modalBadges').addEventListener('click', function(e) {
     const badge = e.target.closest('.badge');
     if (!badge) return;
     e.stopPropagation();
+
+    // Prevent spam clicks while "Copied!" is showing
+    if (badge.classList.contains('copied')) return;
 
     let text = badge.textContent.trim();
     if (badge.classList.contains('badge-id')) {
@@ -1577,9 +1650,43 @@ async function convertBlobToPng(blob) {
 }
 
 // --------------------------------------------------------------
-//  DOWNLOAD & COPY IMAGE LOGIC
+//  DOWNLOAD IMAGE – with loading spinner support
 // --------------------------------------------------------------
-function triggerDownload(primaryUrl, filename) {
+function triggerDownload(primaryUrl, filename, customBtn, cardItemID) {
+    let container = null;
+    let loader = null;
+    let card = null;
+    let originalBtnHTML = '';
+
+    // Show loading on button if provided
+    if (customBtn) {
+        customBtn.disabled = true;
+        originalBtnHTML = customBtn.innerHTML;
+        customBtn.innerHTML = `<div class="spinner" style="width:18px;height:18px;border:2px solid rgba(255,255,255,0.2);border-top:2px solid #fff;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;"></div>`;
+    }
+
+    // Show loading on card and disable pointer events
+    if (cardItemID) {
+        const cardEl = document.querySelector(`.card:has([data-id="${cardItemID}"])`);
+        if (cardEl) {
+            card = cardEl;
+            card.style.pointerEvents = 'none';
+            container = card.querySelector('.img-container');
+            if (container) {
+                loader = container.querySelector('.card-loader');
+                if (!loader) {
+                    loader = document.createElement('div');
+                    loader.className = 'card-loader';
+                    const spinner = document.createElement('div');
+                    spinner.className = 'spinner';
+                    loader.appendChild(spinner);
+                    container.appendChild(loader);
+                }
+                loader.classList.add('show');
+            }
+        }
+    }
+
     fetchImageAsBlob(primaryUrl)
         .then(blob => {
             const ext = filename.split('.').pop().toLowerCase();
@@ -1589,8 +1696,25 @@ function triggerDownload(primaryUrl, filename) {
                 return blob;
             }
         })
-        .then(blob => executeBlobDownload(blob, filename))
-        .catch(() => alert('Failed to download image.'));
+        .then(blob => {
+            executeBlobDownload(blob, filename);
+            // Hide loader and re-enable card immediately
+            if (loader) loader.classList.remove('show');
+            if (card) card.style.pointerEvents = '';
+            if (customBtn) {
+                customBtn.innerHTML = originalBtnHTML;
+                customBtn.disabled = false;
+            }
+        })
+        .catch(() => {
+            alert('Failed to download image.');
+            if (loader) loader.classList.remove('show');
+            if (card) card.style.pointerEvents = '';
+            if (customBtn) {
+                customBtn.innerHTML = originalBtnHTML;
+                customBtn.disabled = false;
+            }
+        });
 }
 
 function executeBlobDownload(blob, filename) {
@@ -1607,41 +1731,115 @@ function executeBlobDownload(blob, filename) {
     }, 0);
 }
 
+// --------------------------------------------------------------
+//  COPY IMAGE TO CLIPBOARD – with loading spinner support
+// --------------------------------------------------------------
 async function copyImageToClipboard(imgUrl, customBtn, cardItemID) {
+    let container = null;
+    let loader = null;
+    let card = null;
+    let originalBtnHTML = '';
+
+    // Show loading on button if provided
+    if (customBtn) {
+        customBtn.disabled = true;
+        originalBtnHTML = customBtn.innerHTML;
+        customBtn.innerHTML = `<div class="spinner" style="width:18px;height:18px;border:2px solid rgba(255,255,255,0.2);border-top:2px solid #fff;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;"></div>`;
+    }
+
+    // Show loading on card and disable pointer events
+    if (cardItemID) {
+        const cardEl = document.querySelector(`.card:has([data-id="${cardItemID}"])`);
+        if (cardEl) {
+            card = cardEl;
+            card.style.pointerEvents = 'none';
+            container = card.querySelector('.img-container');
+            if (container) {
+                loader = container.querySelector('.card-loader');
+                if (!loader) {
+                    loader = document.createElement('div');
+                    loader.className = 'card-loader';
+                    const spinner = document.createElement('div');
+                    spinner.className = 'spinner';
+                    loader.appendChild(spinner);
+                    container.appendChild(loader);
+                }
+                loader.classList.add('show');
+            }
+        }
+    }
+
     try {
         let blob = await fetchImageAsBlob(imgUrl);
         blob = await convertBlobToPng(blob);
         const item = new ClipboardItem({ "image/png": blob });
         await navigator.clipboard.write([item]);
 
+        // Success: hide loader immediately
+        if (loader) loader.classList.remove('show');
+
+        // Show tick on button if provided
         if (customBtn) {
-            const originalHTML = customBtn.innerHTML;
-            customBtn.innerHTML =
-                `<svg viewBox="0 0 24 24" style="fill: #2196F3; transform: scale(1.3);"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`;
-            setTimeout(() => { customBtn.innerHTML = originalHTML; }, 2000);
+            customBtn.innerHTML = `<svg viewBox="0 0 24 24" style="display:block;width:22px;height:22px;margin:0 auto;filter:drop-shadow(0 0 6px rgba(33,150,243,0.5));"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="none" stroke="#2196F3" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+            // Keep button disabled until tick fades
         }
 
+        // Show tick on card if cardItemID provided
         if (cardItemID) {
             const tick = document.getElementById(`tick-${cardItemID}`);
             if (tick) {
                 tick.classList.add('blue-tick');
                 tick.classList.add('show');
-                setTimeout(() => {
-                    tick.classList.remove('show');
-                    setTimeout(() => tick.classList.remove('blue-tick'), 300);
-                }, 2000);
             }
+        }
+
+        // Re-enable UI after tick fades (2s + 300ms)
+        const restoreUI = () => {
+            if (card) card.style.pointerEvents = '';
+            if (customBtn) {
+                customBtn.innerHTML = originalBtnHTML;
+                customBtn.disabled = false;
+            }
+        };
+
+        if (cardItemID) {
+            // Wait for tick to fade out
+            setTimeout(() => {
+                const tick = document.getElementById(`tick-${cardItemID}`);
+                if (tick) {
+                    tick.classList.remove('show');
+                    setTimeout(() => {
+                        if (tick) tick.classList.remove('blue-tick');
+                        restoreUI();
+                    }, 300);
+                } else {
+                    restoreUI();
+                }
+            }, 2000);
+        } else {
+            // No card: just wait 2s
+            setTimeout(restoreUI, 2000);
         }
     } catch (err) {
         console.error("Failed to copy image", err);
         showToast("Failed to copy image. Your browser might not support it.");
+        // Restore UI immediately on error
+        if (customBtn) {
+            customBtn.innerHTML = originalBtnHTML;
+            customBtn.disabled = false;
+        }
+        if (loader) loader.classList.remove('show');
+        if (card) card.style.pointerEvents = '';
     }
 }
 
+// ----- MODAL COPY BUTTON -----
 document.getElementById('modalCopyImgBtn').addEventListener('click', function() {
-    copyImageToClipboard(document.getElementById('modalImg').src, this, null);
+    const imgSrc = document.getElementById('modalImg').src;
+    copyImageToClipboard(imgSrc, this, null);
 });
 
+// ----- MODAL SHARE BUTTON -----
 modalShareBtn.addEventListener('click', function() {
     if (!currentShareItemId) {
         showToast("No item selected.");
@@ -1657,9 +1855,7 @@ modalShareBtn.addEventListener('click', function() {
     };
 
     if (navigator.share) {
-        navigator.share(shareData).then(() => {
-            showToast("Shared successfully!");
-        }).catch((err) => {
+        navigator.share(shareData).catch((err) => {
             if (err.name !== 'AbortError') {
                 showToast("Failed to share.");
             }
@@ -1678,9 +1874,9 @@ modalShareBtn.addEventListener('click', function() {
 });
 
 // --------------------------------------------------------------
-//  ITEM CLICK HANDLER – now accepts an optional imgSrc
+//  ITEM CLICK HANDLER – with loading support for download/copy
 // --------------------------------------------------------------
-function handleItemClick(item, imgSrc) {
+function handleItemClick(item, imgSrc, cardElement) {
     const iconUrl = imgSrc || CONFIG.CDN_BASE_URL + item.itemID + '.webp';
     const dlOption = downloadAs.value;
     const parts = dlOption.split('.');
@@ -1694,7 +1890,8 @@ function handleItemClick(item, imgSrc) {
     if (clickAction.value === 'details') {
         openItemModalWithData(item);
     } else if (clickAction.value === 'download') {
-        triggerDownload(iconUrl, dlFileName);
+        // Pass card element to show loader
+        triggerDownload(iconUrl, dlFileName, null, item.itemID);
     } else if (clickAction.value === 'copyIcon') {
         copyImageToClipboard(iconUrl, null, item.itemID);
     } else {
@@ -1890,6 +2087,10 @@ document.getElementById('dlMsgpack').addEventListener('click', async () => {
 document.getElementById('reportContent').addEventListener('click', (e) => {
     const box = e.target.closest('.copyable-box');
     if (!box) return;
+
+    // Prevent spam clicks while "Copied!" is showing
+    if (box.classList.contains('copied')) return;
+
     const textToCopy = box.innerText.replace('Copied!', '').trim();
     navigator.clipboard.writeText(textToCopy).then(() => {
         box.classList.add('copied');
@@ -2335,7 +2536,9 @@ downloadAs.addEventListener('change', saveSettings);
 // --------------------------------------------------------------
 //  STORAGE/IMAGE CACHE TRACKING
 // --------------------------------------------------------------
-const STORAGE_CACHE_VERSION = 1;
+// Increment version to force a full rescan on next startup,
+// correcting any stale byte counts.
+const STORAGE_CACHE_VERSION = 2;
 const STORAGE_DEBOUNCE_MS = 1000;
 const STORAGE_KEY = 'ff_storage_info';
 
@@ -2344,6 +2547,9 @@ let iconStorageLimitMB = parseFloat(localStorage.getItem('iconLimitMB')) || 15;
 let pendingSizeAdd = 0;
 let storageFlushTimer = null;
 let isStorageDirty = false;
+
+// Track URLs we have already counted in this session to avoid double-counting concurrent loads.
+let countedUrls = new Set();
 
 function loadStorageInfo() {
     try {
@@ -2427,6 +2633,7 @@ async function initStorageTracking() {
         return;
     }
 
+    // Force a full scan to correct any stale totals
     await fullStorageScan();
 }
 
@@ -2445,6 +2652,8 @@ async function fullStorageScan() {
         currentIconStorageSize = total;
         saveStorageInfo(total, requests.length);
         renderStorageBar();
+        // Reset the counting set after a full scan
+        countedUrls.clear();
     } catch (e) {
         console.warn("Storage tracking unavailable", e);
         currentIconStorageSize = 0;
@@ -2471,6 +2680,7 @@ async function checkAndCleanStorage() {
         currentIconStorageSize = 0;
         pendingSizeAdd = 0;
         clearStorageInfo();
+        countedUrls.clear();
         renderStorageBar();
         showToast("Auto cleaned icon storage");
     }
@@ -2494,7 +2704,8 @@ iconLimitInput.addEventListener('keydown', (e) => {
 
 iconLimitTick.addEventListener('click', () => {
     let val = parseFloat(iconLimitInput.value);
-    if (isNaN(val) || val < 0) val = 15;
+    // Fix #6: disallow zero
+    if (isNaN(val) || val <= 0) val = 15;
     iconStorageLimitMB = val;
     localStorage.setItem('iconLimitMB', iconStorageLimitMB);
     iconLimitInput.value = val;
@@ -2509,6 +2720,7 @@ cleanStorageBtn.addEventListener('click', async () => {
     currentIconStorageSize = 0;
     pendingSizeAdd = 0;
     clearStorageInfo();
+    countedUrls.clear();
     renderStorageBar();
     showToast("Cleaned icon storage");
 });
@@ -2926,9 +3138,25 @@ function applyFilters() {
             if (rDesc && item.description && item.description.toLowerCase().includes(query)) matchQuery = true;
             if (rIcon && item.icon && item.icon.toLowerCase().includes(query)) matchQuery = true;
         }
-        const matchTag = !tag || (item.tag && item.tag.toLowerCase() === tag.toLowerCase());
-        const matchType = !type || (item.type && item.type.toLowerCase() === type.toLowerCase());
-        const matchRare = !rare || (item.rarity && item.rarity.toLowerCase() === rare.toLowerCase());
+
+        // ----- FIX #1: multi‑tag matching -----
+        const matchTag = !tag || (
+            typeof item.tag === 'string' &&
+            item.tag
+                .split(',')
+                .map(t => t.trim().toLowerCase())
+                .includes(tag.trim().toLowerCase())
+        );
+
+        const matchType = !type || (
+            item.type != null &&
+            String(item.type).toLowerCase() === type.toLowerCase()
+        );
+
+        const matchRare = !rare || (
+            item.rarity != null &&
+            String(item.rarity).toLowerCase() === rare.toLowerCase()
+        );
 
         return matchQuery && matchTag && matchType && matchRare;
     });
@@ -3038,16 +3266,19 @@ function renderPage(direction) {
     initAnimationObserver();
     document.querySelectorAll('.card').forEach(card => animationObserver.observe(card));
 
-    if (direction === 'forward') {
-        grid.classList.add('slide-in-right');
-        setTimeout(() => {
-            grid.classList.remove('slide-in-right');
-        }, 350);
-    } else if (direction === 'backward') {
-        grid.classList.add('slide-in-left');
-        setTimeout(() => {
-            grid.classList.remove('slide-in-left');
-        }, 350);
+    // ----- Performance mode: skip all slide‑in animations -----
+    if (!document.body.classList.contains('reduce-effects')) {
+        if (direction === 'forward') {
+            grid.classList.add('slide-in-right');
+            setTimeout(() => {
+                grid.classList.remove('slide-in-right');
+            }, 350);
+        } else if (direction === 'backward') {
+            grid.classList.add('slide-in-left');
+            setTimeout(() => {
+                grid.classList.remove('slide-in-left');
+            }, 350);
+        }
     }
 }
 
@@ -3148,7 +3379,7 @@ function buildItemCards(items) {
 
         card.addEventListener('click', (e) => {
             const imgSrc = img.src;
-            handleItemClick(item, imgSrc);
+            handleItemClick(item, imgSrc, card);
         });
 
         frag.appendChild(card);
@@ -3159,13 +3390,18 @@ function buildItemCards(items) {
 // --------------------------------------------------------------
 //  COMMON IMAGE LOADER FOR CARD & MODAL
 // --------------------------------------------------------------
-function loadImageForElement(imgEl, item, reloadBtn) {
+function loadImageForElement(imgEl, item, reloadBtn, modalToken = null) {
     const url = imgEl.dataset.originalUrl;
     const cacheName = 'ff-icons';
     const fallbackUrl = url.replace(CONFIG.CDN_BASE_URL, CONFIG.FALLBACK_CDN_BASE_URL);
 
     loadImageWithRetry(url, { fallbackUrl, cacheName })
-        .then(({ blob, fromCache }) => {
+        .then(async ({ blob, fromCache }) => {
+            // ----- FIX #2: Stale modal guard -----
+            if (modalToken !== null && modalToken !== modalImageLoadToken) {
+                return;
+            }
+
             const objectUrl = URL.createObjectURL(blob);
             setImageBlob(imgEl, objectUrl);
 
@@ -3207,15 +3443,32 @@ function loadImageForElement(imgEl, item, reloadBtn) {
                 }
             }
 
+            // ----- FIX #7: Avoid double-counting concurrent cache writes -----
             if (!fromCache) {
+                // Prevent multiple simultaneous requests for the same URL from counting twice.
+                if (countedUrls.has(url)) {
+                    return; // already counting this URL
+                }
+                countedUrls.add(url);
+
+                // Count the newly downloaded image.
                 recordImageSize(blob.size);
-                if (currentIconStorageSize + pendingSizeAdd > (iconStorageLimitMB * 1024 * 1024)) {
+
+                // If the storage limit is exceeded, flush pending updates and clean.
+                if (
+                    currentIconStorageSize + pendingSizeAdd >
+                    iconStorageLimitMB * 1024 * 1024
+                ) {
                     flushStorageUpdate();
-                    checkAndCleanStorage();
+                    await checkAndCleanStorage();
                 }
             }
         })
         .catch(err => {
+            // ----- FIX #2: Stale modal guard -----
+            if (modalToken !== null && modalToken !== modalImageLoadToken) {
+                return;
+            }
             console.warn('Failed to load image:', url, err);
             const fallbackUrl = getFallbackUrl(err);
             imgEl.src = fallbackUrl;
@@ -3275,11 +3528,22 @@ function goToPage(pageNum) {
     if (pageNum === currentPage) return;
 
     const direction = pageNum > currentPage ? 'forward' : 'backward';
-    currentPage = pageNum;
+    const isReduced = document.body.classList.contains('reduce-effects');
 
+    // ----- Performance Mode: skip animation entirely -----
+    if (isReduced) {
+        currentPage = pageNum;
+        renderPage(direction);
+        updatePaginationUI();
+        scrollPaginationToActive();
+        window.scrollTo({ top: 0, behavior: 'auto' });
+        return;
+    }
+
+    // ----- Normal mode: animate as before -----
+    currentPage = pageNum;
     const slideOutClass = direction === 'forward' ? 'slide-out-left' : 'slide-out-right';
     grid.classList.add(slideOutClass);
-
     isTransitioning = true;
 
     const onAnimationEnd = () => {
@@ -3885,7 +4149,7 @@ async function fetchTutorialMarkdown() {
     }
 }
 
-// Enhanced markdown parser: supports bullet lists and inline links
+// ----- Enhanced markdown parser: bullet lists, inline links (with URL safety) -----
 function parseTutorialMarkdown(md) {
     const lines = md.split('\n');
     let html = '';
@@ -3959,22 +4223,53 @@ function parseTutorialMarkdown(md) {
     return html;
 }
 
-// Helper to parse inline formatting: bold **text**, links [text](url)
+// ----- FIX #4: Safe URL scheme validation -----
 function parseInline(text) {
-    // Escape text first to prevent HTML injection
     let escaped = escapeHtml(text);
-    // Bold: **text** -> <strong>text</strong>
-    escaped = escaped.replace(/\*\*(.+?)\*\*/g, (match, p1) => `<strong>${p1}</strong>`);
-    // Links: [text](url)
-    escaped = escaped.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, linkText, url) => {
-        return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" style="color: #2196F3; text-decoration: underline;">${linkText}</a>`;
-    });
+
+    // Bold
+    escaped = escaped.replace(
+        /\*\*(.+?)\*\*/g,
+        (match, p1) => `<strong>${p1}</strong>`
+    );
+
+    // Links — only allow safe URL schemes.
+    escaped = escaped.replace(
+        /\[([^\]]+)\]\(([^)]+)\)/g,
+        (match, linkText, rawUrl) => {
+            const url = rawUrl.trim();
+
+            let safe = false;
+
+            try {
+                const parsed = new URL(url, window.location.href);
+
+                safe =
+                    parsed.protocol === 'https:' ||
+                    parsed.protocol === 'http:' ||
+                    parsed.protocol === 'mailto:';
+            } catch (_) {
+                safe = false;
+            }
+
+            if (!safe) {
+                return linkText;
+            }
+
+            return `<a href="${escapeHtml(url)}"
+                target="_blank"
+                rel="noopener noreferrer"
+                style="color: #2196F3; text-decoration: underline;">${linkText}</a>`;
+        }
+    );
+
     return escaped;
 }
 
+// ----- HTML escaping helper (used for badges and tutorial) -----
 function escapeHtml(text) {
     const div = document.createElement('div');
-    div.textContent = text;
+    div.textContent = String(text ?? '');
     return div.innerHTML;
 }
 
@@ -4045,6 +4340,19 @@ document.getElementById('settingsScrollDownBtn')?.addEventListener('click', func
     if (body) {
         body.scrollTo({ top: body.scrollHeight, behavior: 'smooth' });
     }
+});
+
+// --------------------------------------------------------------
+//  FILTER STATUS PILL & VISIBILITY TOGGLE
+// --------------------------------------------------------------
+
+filterVisibilityToggle.addEventListener('click', () => {
+    filtersHidden = !filtersHidden;
+    document.querySelector('.filters-row').style.display = filtersHidden ? 'none' : 'flex';
+    // Status row is always visible
+    filterVisibilityIcon.innerHTML = filtersHidden
+        ? '<path d="M4 8l8 8 8-8" stroke="currentColor" stroke-width="2" fill="none"/>'
+        : '<path d="M4 16l8-8 8 8" stroke="currentColor" stroke-width="2" fill="none"/>';
 });
 
 // --------------------------------------------------------------
