@@ -15,6 +15,11 @@ Click the star toggle beside the filters to switch between **normal mode** and *
 You can click the **star button** on any item image to add it to your favorites. You can also import or export (backup) your favorites as a JSON file.
 <img: tutorial10.webp>
 
+# Status Bar
+
+Indicators in status bar reflect your current filtration state and display settings.
+<img: tutorial11.webp>
+
 # Shortcuts & Gestures
 
 Swipe left/right (or use the left/right arrow keys) to go to the previous or next page.
