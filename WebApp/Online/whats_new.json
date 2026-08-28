@@ -1,11 +1,28 @@
 [
   {
+    "version": "v1.3.3",
+    "logs": [
+      "Status bar's dot colors & texts are now practically more useful",
+      "Removed unnecessary page switching animation delay for Performance mode",
+      "Added hide-unhide toggle for the filters row",
+      "Improved Favorites handling for more reliable saving, loading, importing, and duplicate prevention",
+      "Fixed an issue where older saved Favorites could be incorrectly treated as unfavorited",
+      "Improved filtering for items with multiple tags",
+      "Improved item image handling to prevent an older image from appearing after quickly switching between items",
+      "Improved image caching to prevent the same icon from being counted multiple times in storage usage",
+      "Improved tutorial link safety and handling of dynamically generated content",
+      "Improved reliability when loading images through the primary and fallback CDNs",
+      "Fixed invalid storage-limit values such as 0 or negative values from causing storage tracking issues",
+      "A lot of design & animation enhancements"
+    ]
+  },
+  {
     "version": "v1.3.2",
     "logs": [
       "Speed optimization: parsed data is now cached instead of raw msgpack to avoid redundant parsing",
       "Fixed cached database loading issue upon killing browser process",
       "Unified image loading for catalog, modal, and tutorial - faster and more consistent",
-      "Favorites now use an in‑memory cache for instant lookups, especially on large lists",
+      "Favorites now use an in-memory cache for instant lookups, especially on large lists",
       "Reduced memory usage by removing unused database parsing code and worker payload",
       "Database state management is now centralized, eliminating redundant updates",
       "Fixed duplicate caching of tutorial images and cleaned up the initialization flow",
