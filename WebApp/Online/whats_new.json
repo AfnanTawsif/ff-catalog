@@ -1,5 +1,10 @@
 [
   {
+    "version": "v2.0.0",
+    "logs": [
+      "This project is now unified with FF Profiles project"
+    ]
+  },
     "version": "v1.3.3",
     "logs": [
       "Status bar's dot colors & texts are now practically more useful",
