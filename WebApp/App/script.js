@@ -849,7 +849,10 @@ const itemsPerPageTick = document.getElementById('itemsPerPageTick');
 const modalShareBtn = document.getElementById('modalShareBtn');
 
 const reloadBtn = document.getElementById('reloadBtn');
-const mainTitle = document.getElementById('mainTitle');
+
+// ----- HEADER TABS (replaces old mainTitle) -----
+const catalogTab = document.getElementById('catalogTab');
+const profilesTab = document.getElementById('profilesTab');
 
 const viewChangelogsBtn = document.getElementById('viewChangelogsBtn');
 
@@ -1907,7 +1910,7 @@ function handleItemClick(item, imgSrc, cardElement) {
 }
 
 // --------------------------------------------------------------
-//  HOME / RELOAD BUTTON
+//  HOME / RELOAD BUTTON & HEADER TABS
 // --------------------------------------------------------------
 function goHome() {
     while (activeModalStack.length > 0) {
@@ -1932,10 +1935,49 @@ function goHome() {
     applyFilters();
     window.scrollTo({ top: 0, behavior: 'smooth' });
     showToast("🏠 Back to home");
+
+    // Ensure catalog tab is active
+    ensureCatalogTabActive();
 }
 
+// Ensure the catalog tab stays active
+function ensureCatalogTabActive() {
+    if (catalogTab) {
+        catalogTab.classList.add('active');
+    }
+    // Profiles tab is not active by default, but we ensure it's deactivated
+    if (profilesTab) {
+        profilesTab.classList.remove('active');
+    }
+}
+
+// Reload button goes home
 reloadBtn.addEventListener('click', goHome);
-mainTitle.addEventListener('click', goHome);
+
+// Catalog tab – goes home and ensures it's active
+if (catalogTab) {
+    catalogTab.addEventListener('click', () => {
+        // If the catalog tab is already active, go home (like the old title behavior)
+        // Otherwise, activate it and go home
+        if (!catalogTab.classList.contains('active')) {
+            ensureCatalogTabActive();
+        }
+        goHome();
+    });
+}
+
+// Profiles tab – navigate to FF Profiles page
+if (profilesTab) {
+    profilesTab.addEventListener('click', () => {
+        // Navigate to FF Profiles in the same tab
+        window.location.href = 'https://ff-profiles.netlify.app';
+    });
+}
+
+// On page load, ensure catalog tab is active
+document.addEventListener('DOMContentLoaded', () => {
+    ensureCatalogTabActive();
+});
 
 // --------------------------------------------------------------
 //  SETTINGS BUTTON
@@ -4408,4 +4450,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         e.stopPropagation();
         openPerformanceModeModal();
     });
+
+    // Ensure catalog tab is active on load (the HTML already has it, but just in case)
+    ensureCatalogTabActive();
 });
