@@ -5,7 +5,7 @@
 ## 🎮 Free Fire Catalog
 ![Free Fire Catalog Banner](./WebApp/App/icons/banner.jpg)
 
-**A fast, feature-rich Free Fire item catalog for searching, filtering, and browsing thousands of items with offline capability.**
+**A fast, feature-rich Free Fire item catalog for searching, filtering, and browsing thousands of items with offline capability. Now integrated with player ID search!**
 
 🔗 **Live Website:** [https://ff-catalog.netlify.app/](https://ff-catalog.netlify.app/)  
 
@@ -122,6 +122,8 @@ The database and icons are **updated regularly** – either when new items are a
 ## 🛠️ Development – Customize Your Own Version
 
 Want to run your own instance or contribute? Here’s everything you need:
+
+⚠️ Important: Starting from v2.0.0, builds include integration with the FF Profiles project, which remains private for security reasons. If you want to work exclusively on the open-source catalog, a catalog-only version (v1.3.3) is available in the "WebApp" folder.
 
 ### 1. Fork the Repository
 
