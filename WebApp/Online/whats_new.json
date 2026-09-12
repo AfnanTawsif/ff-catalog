@@ -1,5 +1,15 @@
 [
   {
+    "version": "v2.0.1",
+    "logs": [
+      "Fixed database loading delay on startup",
+      "Fixed database not loading on offline startup",
+      "Service Worker now only handles local files, leaving CDN and API requests untouched",
+      "Added request timeouts to prevent hung connections from freezing the page",
+      "Removed unnecessary preconnect that slowed startup"
+    ]
+  },
+  {
     "version": "v2.0.0",
     "logs": [
       "This project is now unified with FF Profiles project"
