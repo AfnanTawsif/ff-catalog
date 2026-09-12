@@ -430,7 +430,12 @@ async function fetchSWVersion() {
     let fromCache = false;
 
     try {
-        const res = await fetch('sw.js?nocache=' + Date.now());
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const res = await fetch('sw.js?nocache=' + Date.now(), {
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
         if (!res.ok) throw new Error('Network error');
         const text = await res.text();
         const patterns = [
@@ -4401,7 +4406,11 @@ filterVisibilityToggle.addEventListener('click', () => {
 //  STARTUP INITIALIZATION
 // --------------------------------------------------------------
 window.addEventListener('DOMContentLoaded', async () => {
-    await fetchSWVersion();
+    // Fire-and-forget: version fetch must NOT block DB loading,
+    // especially when offline where the SW fetch can hang.
+    fetchSWVersion().catch(err => {
+        console.warn('fetchSWVersion failed:', err);
+    });
 
     loadFavorites();
     loadFavState();

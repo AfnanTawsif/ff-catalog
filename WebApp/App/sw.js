@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ff-catalog-app-v2.0.0';
+const CACHE_NAME = 'ff-catalog-app-v2.0.1';
 const ASSETS = [
     './',
     './index.html',
@@ -42,18 +42,43 @@ self.addEventListener('activate', event => {
     );
 });
 
-// Fetch Event - Cache-First strategy for local UI assets
+// Fetch Event - Cache-First strategy for same-origin app shell only.
+// External requests (CDNs, APIs, etc.) are left untouched so the app's
+// own fetch-with-fallback logic stays in full control of its timeouts.
 self.addEventListener('fetch', event => {
     if (event.request.method !== 'GET') return;
 
-    // Skip external CDN requests from being cached by SW
-    if (event.request.url.includes('database.msgpack.gz') || event.request.url.includes('cdn.jsdelivr.net')) {
+    let url;
+    try {
+        url = new URL(event.request.url);
+    } catch (_) {
         return;
     }
 
+    // Let anything that isn't same-origin pass straight through to the network.
+    if (url.origin !== self.location.origin) return;
+
     event.respondWith(
         caches.match(event.request).then(cachedResponse => {
-            return cachedResponse || fetch(event.request);
+            if (cachedResponse) return cachedResponse;
+
+            // Hard timeout so a hung network request can never stall the page
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+            return fetch(event.request, { signal: controller.signal })
+                .then(response => {
+                    clearTimeout(timeoutId);
+                    return response;
+                })
+                .catch(() => {
+                    clearTimeout(timeoutId);
+                    // Fail fast for optional local resources (manifest, icons, etc.)
+                    return new Response('', {
+                        status: 503,
+                        statusText: 'Offline'
+                    });
+                });
         })
     );
 });
