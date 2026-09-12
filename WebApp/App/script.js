@@ -575,37 +575,24 @@ const rarityMap = {
 };
 
 // --------------------------------------------------------------
-//  FAVORITES SYSTEM – in‑memory Set for O(1) lookups
+//  FAVORITES SYSTEM – simple array of IDs, newest first
 // --------------------------------------------------------------
 const FAV_STORAGE_KEY = 'ff_favorites';
-let favorites = [];
+let favorites = []; // array of string IDs, newest first
 let favoriteIds = new Set();
 
-// Normalization helper for favorites
 function normalizeFavoritesList(list) {
-    const normalized = Array.isArray(list)
-        ? list
-            .filter(f => f && f.id !== undefined && f.id !== null)
-            .map(f => ({
-                id: String(f.id),
-                timestamp: Number.isFinite(Number(f.timestamp))
-                    ? Number(f.timestamp)
-                    : Date.now()
-            }))
-            .filter(f => f.id.length > 0)
-        : [];
-
-    // Remove duplicate IDs while preserving the newest occurrence.
+    if (!Array.isArray(list)) return [];
     const seen = new Set();
-    const deduped = [];
-
-    for (let i = normalized.length - 1; i >= 0; i--) {
-        if (seen.has(normalized[i].id)) continue;
-        seen.add(normalized[i].id);
-        deduped.unshift(normalized[i]);
+    const result = [];
+    for (const id of list) {
+        const strId = String(id).trim();
+        if (strId && !seen.has(strId)) {
+            seen.add(strId);
+            result.push(strId);
+        }
     }
-
-    return deduped;
+    return result;
 }
 
 function loadFavorites() {
@@ -622,35 +609,24 @@ function loadFavorites() {
         // ignore
     }
     const normalized = normalizeFavoritesList(list);
-    // Check if normalized differs from original list
-    const currentRaw = JSON.stringify(list);
-    const normalizedRaw = JSON.stringify(normalized);
-    if (currentRaw !== normalizedRaw) {
-        // Persist normalized version
+    favorites = normalized;
+    favoriteIds = new Set(normalized);
+    if (JSON.stringify(list) !== JSON.stringify(normalized)) {
         saveFavorites(normalized);
     } else {
-        favorites = normalized;
-        favoriteIds = new Set(normalized.map(f => f.id));
-        updateFavUI(); // ensure UI reflects loaded state
+        updateFavUI();
     }
 }
 
-// ----- FIX #3: Normalize and sanitize imported favorites -----
 function saveFavorites(list) {
     const normalized = normalizeFavoritesList(list);
-
     favorites = normalized;
-    favoriteIds = new Set(normalized.map(f => f.id));
-
+    favoriteIds = new Set(normalized);
     try {
-        localStorage.setItem(
-            FAV_STORAGE_KEY,
-            JSON.stringify(normalized)
-        );
+        localStorage.setItem(FAV_STORAGE_KEY, JSON.stringify(normalized));
     } catch (err) {
         console.warn('Failed to save favorites:', err);
     }
-
     updateFavUI();
 }
 
@@ -661,11 +637,11 @@ function isFavorited(id) {
 function toggleFavorite(id) {
     const strId = String(id);
     let list = favorites.slice();
-    const idx = list.findIndex(f => f.id === strId);
+    const idx = list.indexOf(strId);
     if (idx > -1) {
         list.splice(idx, 1);
     } else {
-        list.push({ id: strId, timestamp: Date.now() });
+        list.unshift(strId); // newest first
     }
     saveFavorites(list);
     if (favFilterActive) {
@@ -678,11 +654,9 @@ function getFavorites() {
 }
 
 function getFavoritedItems() {
-    // Sort inline for clarity
-    const favs = getFavorites().sort((a, b) => b.timestamp - a.timestamp);
     const items = [];
-    favs.forEach(f => {
-        const item = itemsById.get(f.id);
+    favorites.forEach(id => {
+        const item = itemsById.get(id);
         if (item) items.push(item);
     });
     return items;
@@ -1096,14 +1070,14 @@ function renderPaginationBar() {
     footer.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 2px 0;">
             <div style="display: flex; align-items: center; gap: 8px;">
-                <button class="whatsnew-arrow-btn" data-action="prev" title="Previous page" style="background: #2a2a2a; border: none; color: #aaa; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 22px; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; opacity: ${current <= 1 ? '0.3' : '1'}; padding: 0; line-height: 1;">
-                    ‹
+                <button class="whatsnew-arrow-btn" data-action="prev" title="Previous page" style="background: #2a2a2a; border: none; color: #aaa; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; opacity: ${current <= 1 ? '0.3' : '1'}; padding: 0; line-height: 1;">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="display:block;"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
                 </button>
                 <span style="color: var(--text-muted); font-size: 14px; font-weight: 500; min-width: 60px; text-align: center;">
                     ${current} of ${totalPages}
                 </span>
-                <button class="whatsnew-arrow-btn" data-action="next" title="Next page" style="background: #2a2a2a; border: none; color: #aaa; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 22px; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; opacity: ${current >= totalPages ? '0.3' : '1'}; padding: 0; line-height: 1;">
-                    ›
+                <button class="whatsnew-arrow-btn" data-action="next" title="Next page" style="background: #2a2a2a; border: none; color: #aaa; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; opacity: ${current >= totalPages ? '0.3' : '1'}; padding: 0; line-height: 1;">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="display:block;"><path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z"/></svg>
                 </button>
             </div>
             <button class="whatsnew-close-btn" style="background: var(--glow); border: none; color: #fff; padding: 6px 18px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(168, 66, 255, 0.4);">
@@ -3211,7 +3185,7 @@ function applyFilters() {
     if (favFilterActive) {
         const favs = getFavorites();
         const orderMap = {};
-        favs.forEach((f, idx) => { orderMap[f.id] = idx; });
+        favs.forEach((id, idx) => { orderMap[id] = idx; });
         filteredItems.sort((a, b) => {
             const idxA = orderMap[String(a.itemID)] ?? Infinity;
             const idxB = orderMap[String(b.itemID)] ?? Infinity;
@@ -3691,18 +3665,19 @@ function triggerFavImport() {
             try {
                 const data = JSON.parse(ev.target.result);
                 if (Array.isArray(data)) {
-                    if (data.length > 0 && confirm(`Import ${data.length} favorites? This will replace your current list.`)) {
-                        saveFavorites(data);
-                    } else if (data.length === 0) {
+                    const valid = data.filter(id => typeof id === 'string' || typeof id === 'number');
+                    if (valid.length > 0 && confirm(`Import ${valid.length} favorites? This will replace your current list.`)) {
+                        saveFavorites(valid);
+                    } else if (valid.length === 0) {
                         saveFavorites([]);
                     } else {
                         return;
                     }
                     updateFavUI();
                     applyFilters();
-                    showToast(`Imported ${data.length} favorites!`);
+                    showToast(`Imported ${valid.length} favorites!`);
                 } else {
-                    showToast('Invalid JSON format.');
+                    showToast('Invalid format: expected an array of IDs.');
                 }
             } catch (err) {
                 showToast('Failed to parse file.');
