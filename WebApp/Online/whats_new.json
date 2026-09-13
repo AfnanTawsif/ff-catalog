@@ -1,5 +1,12 @@
 [
   {
+    "version": "v2.0.3",
+    "logs": [
+      "Switched to shimmer & dotted loading animations for seamless loop",
+      "Database or report loading won't hide the header anymore"
+    ]
+  },
+  {
     "version": "v2.0.2",
     "logs": [
       "Favorites list will now follow newest first sequence",
