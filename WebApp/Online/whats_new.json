@@ -1,5 +1,12 @@
 [
   {
+    "version": "v2.0.2",
+    "logs": [
+      "Favorites list will now follow newest first sequence",
+      "UI/UX enhancements"
+    ]
+  },
+  {
     "version": "v2.0.1",
     "logs": [
       "Fixed database loading delay on startup",
