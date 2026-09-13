@@ -1141,24 +1141,25 @@
             opacity: 1 !important;
         }
 
-        /* ----- Loading Overlay ----- */
+        /* ----- Loading Overlay (centered in the scrollable area below the header) ----- */
         .loading-container {
             position: fixed;
-            top: 0;
+            top: var(--header-height, 140px);   /* starts right below the sticky header */
             left: 0;
-            width: 100%;
-            height: 100%;
+            right: 0;
+            bottom: 0;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            gap: 16px;
+            gap: 22px;
             background: rgba(15, 15, 15, 0.9);
             z-index: 999;
             opacity: 0;
             visibility: hidden;
             pointer-events: none;
             backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             transition: opacity 0.3s ease, visibility 0.3s ease;
         }
         body.reduce-effects .loading-container {
@@ -1173,20 +1174,71 @@
             pointer-events: auto;
         }
 
-        .main-spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid var(--border);
-            border-top-color: var(--glow);
+        /* ==========================================================
+           DB-LOADING STATE
+           Toggled by an inline MutationObserver on #loadingOverlay.
+           Fixes the visual glitch where the top of an open modal
+           peeks through above the header line, and prevents the user
+           from re-opening modals or hammering header buttons while
+           the database is (re)loading.
+           ========================================================== */
+        body.db-loading .modal {
+            display: none !important;
+        }
+        body.db-loading .settings-btn,
+        body.db-loading .reload-btn {
+            pointer-events: none !important;
+            opacity: 0.4 !important;
+        }
+        body.db-loading .settings-btn svg {
+            transform: none !important;
+        }
+
+        /* ----- Premium 3-dot loading indicator ----- */
+        .loading-dots {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            height: 26px;
+        }
+
+        .loading-dots span {
+            display: block;
+            width: 14px;
+            height: 14px;
             border-radius: 50%;
-            animation: spin 0.8s linear infinite;
+            background: radial-gradient(circle at 32% 30%,
+                        #d9a6ff 0%,
+                        #a842ff 55%,
+                        #7b2fbe 100%);
+            box-shadow:
+                0 0 10px rgba(168, 66, 255, 0.50),
+                0 0 24px rgba(168, 66, 255, 0.22);
+            animation: premiumDotPulse 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+            will-change: transform, opacity;
         }
-        body.reduce-effects .main-spinner {
-            animation: spin 0.8s linear infinite !important;
-            border-color: var(--border);
-            border-top-color: var(--glow);
-            background: transparent;
+
+        .loading-dots span:nth-child(2) { animation-delay: 0.18s; }
+        .loading-dots span:nth-child(3) { animation-delay: 0.36s; }
+
+        @keyframes premiumDotPulse {
+            0%, 80%, 100% {
+                transform: scale(0.7);
+                opacity: 0.30;
+            }
+            40% {
+                transform: scale(1.15);
+                opacity: 1;
+            }
         }
+
+        /* Flat, glow-free version in Performance mode */
+        body.reduce-effects .loading-dots span {
+            background: var(--glow) !important;
+            box-shadow: none !important;
+        }
+
         @keyframes spin {
             to {
                 transform: rotate(360deg);
@@ -1274,9 +1326,18 @@
             margin: 3px auto 4px;
             position: relative;
             border-radius: 6px;
-            background: linear-gradient(135deg, #1c1c1c 25%, #3a3a3a 50%, #1c1c1c 75%);
-            background-size: 400% 100%;
-            animation: steelShine 2s infinite cubic-bezier(0.4, 0.0, 0.2, 1);
+            background-color: #181818;
+            background-image: linear-gradient(
+                100deg,
+                rgba(255, 255, 255, 0)     30%,
+                rgba(255, 255, 255, 0.08)  42%,
+                rgba(255, 255, 255, 0.22)  50%,
+                rgba(255, 255, 255, 0.08)  58%,
+                rgba(255, 255, 255, 0)     70%
+            );
+            background-size: 200% 100%;
+            background-repeat: no-repeat;
+            animation: premiumShimmer 2s linear infinite;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -1289,12 +1350,12 @@
             background-size: auto !important;
             border-color: #2a2a2a;
         }
-        @keyframes steelShine {
+        @keyframes premiumShimmer {
             0% {
-                background-position: 100% 50%;
+                background-position: 140% 0;
             }
             100% {
-                background-position: -100% 50%;
+                background-position: -40% 0;
             }
         }
         .img-container.paused {
@@ -1784,13 +1845,22 @@
             position: relative;
         }
 
-        /* ----- MODAL IMAGE WRAPPER WITH STEEL ANIMATION ----- */
+        /* ----- MODAL IMAGE WRAPPER WITH PREMIUM SHIMMER ----- */
         .item-modal-left .img-wrapper {
             width: 110px;
             height: 110px;
-            background: linear-gradient(135deg, #1c1c1c 25%, #3a3a3a 50%, #1c1c1c 75%);
-            background-size: 400% 100%;
-            animation: steelShine 2s infinite cubic-bezier(0.4, 0.0, 0.2, 1);
+            background-color: #181818;
+            background-image: linear-gradient(
+                100deg,
+                rgba(255, 255, 255, 0)     30%,
+                rgba(255, 255, 255, 0.08)  42%,
+                rgba(255, 255, 255, 0.22)  50%,
+                rgba(255, 255, 255, 0.08)  58%,
+                rgba(255, 255, 255, 0)     70%
+            );
+            background-size: 200% 100%;
+            background-repeat: no-repeat;
+            animation: premiumShimmer 2s linear infinite;
             border-radius: 8px;
             display: flex;
             justify-content: center;
@@ -3819,7 +3889,7 @@
 
         /* Loading animations remain active in reduced-effects mode.
            These are functional loading indicators, not decorative effects. */
-        body.reduce-effects .main-spinner,
+        body.reduce-effects .loading-dots span,
         body.reduce-effects .spinner,
         body.reduce-effects .btn-spinner,
         body.reduce-effects .profile-loader .spinner,
@@ -3827,8 +3897,9 @@
             animation-play-state: running !important;
         }
 
-        body.reduce-effects .main-spinner {
-            animation: spin 0.8s linear infinite !important;
+        body.reduce-effects .loading-dots span {
+            animation-name: premiumDotPulse !important;
+            animation-play-state: running !important;
         }
 
         body.reduce-effects .spinner,
@@ -3980,7 +4051,11 @@
     <!-- ===== MAIN GRID ===== -->
     <main>
         <div id="loadingOverlay" class="loading-container">
-            <div class="main-spinner"></div>
+            <div class="loading-dots" aria-label="Loading">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
             <p id="loadingText" class="loading-text">Loading data...</p>
         </div>
 
@@ -4360,6 +4435,60 @@
 
     <!-- Toast UI -->
     <div id="toast" class="toast-notification"></div>
+
+    <!-- ===== HEADER HEIGHT TRACKER ===== -->
+    <!-- Keeps the loading overlay perfectly centered in the region below the sticky header -->
+    <script>
+        (function() {
+            function updateHeaderHeightVar() {
+                const headerEl = document.querySelector('header');
+                if (headerEl) {
+                    document.documentElement.style.setProperty(
+                        '--header-height',
+                        headerEl.getBoundingClientRect().height + 'px'
+                    );
+                }
+            }
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', updateHeaderHeightVar);
+            } else {
+                updateHeaderHeightVar();
+            }
+            window.addEventListener('load', updateHeaderHeightVar);
+            window.addEventListener('resize', updateHeaderHeightVar);
+            if (window.ResizeObserver) {
+                const headerEl = document.querySelector('header');
+                if (headerEl) {
+                    new ResizeObserver(updateHeaderHeightVar).observe(headerEl);
+                }
+            }
+        })();
+    </script>
+
+    <!-- ===== DB LOADING STATE TRACKER ===== -->
+    <!-- Toggles `body.db-loading` whenever #loadingOverlay gains/loses `.active`.
+         This is what hides open modals during (re)sync and disables the
+         settings/reload header buttons, preventing the "top of settings modal
+         peeking through above the header line" glitch. -->
+    <script>
+        (function() {
+            const overlay = document.getElementById('loadingOverlay');
+            if (!overlay) return;
+            const sync = () => {
+                document.body.classList.toggle(
+                    'db-loading',
+                    overlay.classList.contains('active')
+                );
+            };
+            if (window.MutationObserver) {
+                new MutationObserver(sync).observe(overlay, {
+                    attributes: true,
+                    attributeFilter: ['class']
+                });
+            }
+            sync();
+        })();
+    </script>
 
     <!-- ===== SCRIPTS ===== -->
     <script src="https://cdn.jsdelivr.net/npm/@msgpack/msgpack@3.0.0-beta2/dist.es5+umd/msgpack.min.js">
