@@ -1,5 +1,14 @@
 [
   {
+    "version": "v2.0.4",
+    "logs": [
+      "Removed unnecessary sleep time for faster icon loading",
+      "Implemented a new mode for direct CDN loading without Cache API",
+      "Added toggle in Icon Storage section to enable or disable Cache API (Tap info button to learn pros & cons)",
+      "First row of header remains disabled during loading to avoid accidental data corruption"
+    ]
+  },
+  {
     "version": "v2.0.3",
     "logs": [
       "Switched to shimmer & dotted loading animations for seamless loop",
