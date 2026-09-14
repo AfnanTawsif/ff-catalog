@@ -1186,10 +1186,18 @@
             display: none !important;
         }
         body.db-loading .settings-btn,
-        body.db-loading .reload-btn {
+        body.db-loading .reload-btn,
+        body.db-loading .header-tab {
             pointer-events: none !important;
             opacity: 0.4 !important;
+            cursor: not-allowed !important;
         }
+
+/* Kill the purple underline + gradient text while tabs are disabled */
+body.db-loading .header-tab.active::after {
+    opacity: 0.4 !important;
+    box-shadow: none !important;
+}
         body.db-loading .settings-btn svg {
             transform: none !important;
         }
@@ -1509,7 +1517,7 @@
         }
         body.reduce-effects .toast-notification {
             box-shadow: none !important;
-            border-color: #333;
+            border-color: var(--glow);
             transition: opacity 0.3s ease, transform 0.35s ease;
         }
         .toast-notification.show {
@@ -2256,6 +2264,22 @@
         }
         .settings-row.compact {
             padding-top: 4px;
+        }
+
+        /* ==========================================================
+           USE-STORAGE toggle — grays out the icon-storage details
+           when Storage mode is OFF.
+           ========================================================== */
+        #iconStorageDetails {
+            transition: opacity 0.2s ease;
+        }
+        #iconStorageDetails.disabled {
+            opacity: 0.4;
+            pointer-events: none;
+            filter: grayscale(0.7);
+        }
+        body.reduce-effects #iconStorageDetails {
+            transition: none;
         }
 
         .settings-label {
@@ -4232,25 +4256,46 @@
 
                     <div class="settings-section">
                         <h3>Icon storage</h3>
-                        <div class="settings-row no-divider">
-                            <span class="settings-label">Auto clean at</span>
-                            <div class="limit-input-group">
-                                <input type="number" id="iconLimitInput" class="limit-input" max="9999" value="15">
-                                <span class="limit-unit">MB</span>
-                                <button id="iconLimitTick" class="action-btn-small icon-only-btn" disabled>
-                                    <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+
+                        <!-- ===== Storage mode toggle (new) ===== -->
+                        <div class="reduce-effects-row">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="settings-label">Use storage</span>
+                                <button id="storageInfoBtn" class="info-btn" title="Learn more about Storage Mode">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
                                 </button>
                             </div>
+                            <div class="toggle-wrapper">
+                                <span class="toggle-status off" id="useStorageStatus">Off</span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="useStorageToggle">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
                         </div>
-                        <div class="settings-row compact" style="padding-top: 6px; padding-bottom: 16px; border-bottom: 1px solid var(--border);">
-                            <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
-                                <div class="storage-bar-wrapper">
-                                    <div class="storage-bar-fill" id="storageBarFill"></div>
-                                    <span class="storage-bar-text" id="storageBarText">0.0MB / 15MB</span>
+
+                        <!-- ===== Storage details (grayed out when Storage is OFF) ===== -->
+                        <div id="iconStorageDetails" class="disabled">
+                            <div class="settings-row no-divider">
+                                <span class="settings-label">Auto clean at</span>
+                                <div class="limit-input-group">
+                                    <input type="number" id="iconLimitInput" class="limit-input" max="9999" value="15" disabled>
+                                    <span class="limit-unit">MB</span>
+                                    <button id="iconLimitTick" class="action-btn-small icon-only-btn" disabled>
+                                        <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                                    </button>
                                 </div>
-                                <button id="cleanStorageBtn" class="action-btn-small icon-only-btn" title="Clean Icon Storage" style="margin-left: 12px; flex-shrink: 0;">
-                                    <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                                </button>
+                            </div>
+                            <div class="settings-row compact" style="padding-top: 6px; padding-bottom: 16px; border-bottom: 1px solid var(--border);">
+                                <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                                    <div class="storage-bar-wrapper">
+                                        <div class="storage-bar-fill" id="storageBarFill"></div>
+                                        <span class="storage-bar-text" id="storageBarText">0.0MB / 15MB</span>
+                                    </div>
+                                    <button id="cleanStorageBtn" class="action-btn-small icon-only-btn" title="Clean Icon Storage" style="margin-left: 12px; flex-shrink: 0;" disabled>
+                                        <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

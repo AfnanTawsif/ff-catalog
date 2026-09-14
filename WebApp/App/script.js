@@ -167,206 +167,148 @@ async function fetchWithFallback(primaryUrl, fallbackUrl, options = {}) {
 }
 
 // ================================================================
-//  🖼️  ROBUST IMAGE LOADER WITH FALLBACK CDN ON ANY ERROR
+//  🖼️  ROBUST IMAGE LOADER
+//  - In-flight deduplication (no artificial 500 ms sleep)
+//  - Cache-first, then primary CDN → fallback CDN
+//  - Overall timeout still enforced
 // ================================================================
+
+// URLs currently being loaded. If a second caller asks for the same
+// URL while the first is still in flight, they share the same promise
+// instead of issuing their own fetch. This is what makes the old
+// 500 ms "wait and retry the cache" trick unnecessary.
+const _inflightImageLoads = new Map();
+
 async function loadImageWithRetry(url, options = {}) {
     const {
         fallbackUrl = url.replace(CONFIG.CDN_BASE_URL, CONFIG.FALLBACK_CDN_BASE_URL),
             cacheName = 'ff-icons',
             timeout = 20000,
-            cacheTimeout = 2000,
-            retryDelay = 500
+            primaryTimeout = 15000,
+            fallbackTimeout = 8000
     } = options;
 
-    const CACHE_TIMEOUT = cacheTimeout;
-    const RETRY_DELAY = retryDelay;
-    const TOTAL_TIMEOUT = timeout;
+    const key = cacheName + '::' + url;
 
-    async function attemptCache(url) {
-        try {
-            const cache = await caches.open(cacheName);
-            const response = await cache.match(url);
-
-            if (!response) return null;
-
-            const blob = await response.blob();
-
-            if (blob && blob.size > 0) {
-                return blob;
-            }
-
-            return null;
-        } catch (_) {
-            return null;
-        }
+    // ----------------------------------------------------------
+    // If an identical load is already in flight, reuse it.
+    // ----------------------------------------------------------
+    const existing = _inflightImageLoads.get(key);
+    if (existing) {
+        return existing;
     }
 
-    async function fetchWithTimeout(url, timeout) {
+    // ----------------------------------------------------------
+    // Helper: fetch a URL with an AbortController timeout.
+    // ----------------------------------------------------------
+    async function fetchWithTimeout(targetUrl, ms) {
         const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), timeout);
-
+        const id = setTimeout(() => controller.abort(), ms);
         try {
-            const response = await fetch(url, {
-                signal: controller.signal
-            });
-
+            const response = await fetch(targetUrl, { signal: controller.signal });
             clearTimeout(id);
             return response;
         } catch (err) {
             clearTimeout(id);
+            if (err.name === 'AbortError') {
+                const timeoutErr = new Error('Request timed out');
+                timeoutErr.status = 0;
+                throw timeoutErr;
+            }
             throw err;
         }
     }
 
-    async function networkFetchWithFallback(primaryUrl, fallbackUrl) {
+    // ----------------------------------------------------------
+    // Helper: try primary, then fallback on ANY error.
+    // ----------------------------------------------------------
+    async function networkFetchWithFallback(primaryUrl, fbUrl) {
         let primaryError = null;
 
         try {
-            const response = await fetchWithTimeout(primaryUrl, 15000);
+            const response = await fetchWithTimeout(primaryUrl, primaryTimeout);
+            if (response.ok) return response;
 
-            if (response.ok) {
-                return response;
-            }
-
-            primaryError = new Error(
-                `Primary CDN returned HTTP ${response.status}`
-            );
+            primaryError = new Error(`Primary CDN returned HTTP ${response.status}`);
             primaryError.status = response.status;
-
         } catch (err) {
-            if (err.name === 'AbortError') {
-                primaryError = new Error('Primary CDN request timed out');
-                primaryError.status = 0;
-            } else {
-                primaryError = new Error(
-                    `Primary CDN network error: ${err.message}`
-                );
-                primaryError.status = 0;
-            }
+            primaryError = err.status
+                ? err
+                : Object.assign(new Error(`Primary CDN network error: ${err.message}`), { status: 0 });
         }
 
-        if (fallbackUrl) {
+        if (fbUrl) {
             try {
-                const fallbackResponse = await fetchWithTimeout(
-                    fallbackUrl,
-                    8000
-                );
-
-                if (fallbackResponse.ok) {
-                    return fallbackResponse;
-                }
-
-                console.warn(
-                    `Fallback CDN returned HTTP ${fallbackResponse.status}`
-                );
-
+                const fallbackResponse = await fetchWithTimeout(fbUrl, fallbackTimeout);
+                if (fallbackResponse.ok) return fallbackResponse;
+                console.warn(`Fallback CDN returned HTTP ${fallbackResponse.status}`);
             } catch (fallbackErr) {
-                console.warn(
-                    'Fallback CDN network error:',
-                    fallbackErr
-                );
+                console.warn('Fallback CDN network error:', fallbackErr);
             }
         }
 
         throw primaryError;
     }
 
-    const overallTimeout = new Promise((_, reject) =>
-        setTimeout(() => {
-            const err = new Error(
-                'Image loading timed out'
-            );
+    // ----------------------------------------------------------
+    // The actual work: cache lookup → network → cache write.
+    // ----------------------------------------------------------
+    const work = (async () => {
+        // ---- 1. Single cache lookup ----
+        try {
+            const cache = await caches.open(cacheName);
+            const cachedResponse = await cache.match(url);
+            if (cachedResponse) {
+                const blob = await cachedResponse.blob();
+                if (blob && blob.size > 0) {
+                    return { blob, fromCache: true };
+                }
+            }
+        } catch (_) {
+            // Cache API unavailable (private mode, etc.) → fall through to network.
+        }
+
+        // ---- 2. Network: primary → fallback ----
+        const response = await networkFetchWithFallback(url, fallbackUrl);
+        const blob = await response.blob();
+
+        if (!blob || blob.size === 0) {
+            const emptyBlobError = new Error('Empty blob from CDN');
+            emptyBlobError.status = 0;
+            throw emptyBlobError;
+        }
+
+        // ---- 3. Cache write (awaited, so concurrent readers can hit it) ----
+        try {
+            const cache = await caches.open(cacheName);
+            await cache.put(url, new Response(blob, { headers: response.headers }));
+        } catch (_) {
+            // Non-fatal: if caching fails we still return the blob.
+        }
+
+        return { blob, fromCache: false };
+    })();
+
+    // ----------------------------------------------------------
+    // Enforce an overall wall-clock timeout on the whole pipeline.
+    // ----------------------------------------------------------
+    let overallTimerId = null;
+    const overallTimeout = new Promise((_, reject) => {
+        overallTimerId = setTimeout(() => {
+            const err = new Error('Image loading timed out');
             err.status = 0;
             reject(err);
-        }, TOTAL_TIMEOUT)
-    );
+        }, timeout);
+    });
 
-    try {
-        const result = await Promise.race([
-            (async () => {
+    const tracked = Promise.race([work, overallTimeout])
+        .finally(() => {
+            clearTimeout(overallTimerId);
+            _inflightImageLoads.delete(key);
+        });
 
-                // --------------------------------------------------
-                // Cache attempt #1
-                // --------------------------------------------------
-                let blob = await withTimeout(
-                    attemptCache(url),
-                    CACHE_TIMEOUT
-                );
-
-                if (blob) {
-                    return {
-                        blob,
-                        fromCache: true
-                    };
-                }
-
-                // --------------------------------------------------
-                // Small delay before second cache attempt
-                // --------------------------------------------------
-                await new Promise(resolve =>
-                    setTimeout(resolve, RETRY_DELAY)
-                );
-
-                // --------------------------------------------------
-                // Cache attempt #2
-                // --------------------------------------------------
-                blob = await withTimeout(
-                    attemptCache(url),
-                    CACHE_TIMEOUT
-                );
-
-                if (blob) {
-                    return {
-                        blob,
-                        fromCache: true
-                    };
-                }
-
-                // --------------------------------------------------
-                // Network: primary → fallback on ANY error
-                // --------------------------------------------------
-                const response = await networkFetchWithFallback(
-                    url,
-                    fallbackUrl
-                );
-
-                const cache = await caches.open(cacheName);
-
-                const clonedResponse = response.clone();
-
-                cache.put(url, clonedResponse).catch(() => {});
-
-                const dataBlob = await response.blob();
-
-                if (!dataBlob || dataBlob.size === 0) {
-                    const emptyBlobError = new Error(
-                        'Empty blob from CDN'
-                    );
-                    emptyBlobError.status = 0;
-                    throw emptyBlobError;
-                }
-
-                return {
-                    blob: dataBlob,
-                    fromCache: false
-                };
-            })(),
-
-            overallTimeout
-        ]);
-
-        return result;
-
-    } catch (err) {
-        throw err;
-    }
-}
-
-function withTimeout(promise, ms) {
-    return Promise.race([
-        promise,
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Cache timeout')), ms))
-    ]);
+    _inflightImageLoads.set(key, tracked);
+    return tracked;
 }
 
 // --------------------------------------------------------------
@@ -551,6 +493,10 @@ let currentPage = 1;
 let ITEMS_PER_PAGE = 80;
 let totalPages = 1;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+// Storage mode: false = direct <img> loading (browser HTTP cache only)
+//               true  = Cache API + blob → objectURL (offline-capable)
+let useIconStorage = false;
 
 let activeModalStack = [];
 let currentItemModalId = null;
@@ -821,6 +767,11 @@ const iconLimitTick = document.getElementById('iconLimitTick');
 const storageBarFill = document.getElementById('storageBarFill');
 const storageBarText = document.getElementById('storageBarText');
 const cleanStorageBtn = document.getElementById('cleanStorageBtn');
+
+// --- NEW: Use-storage toggle refs ---
+const useStorageToggle = document.getElementById('useStorageToggle');
+const useStorageStatus = document.getElementById('useStorageStatus');
+const iconStorageDetails = document.getElementById('iconStorageDetails');
 
 const itemsPerPageInput = document.getElementById('itemsPerPageInput');
 const itemsPerPageTick = document.getElementById('itemsPerPageTick');
@@ -2509,6 +2460,11 @@ function loadSettings() {
     const savedReduceEffects = localStorage.getItem('reduceEffects') === 'true';
     reduceEffectsToggle.checked = savedReduceEffects;
     applyReduceEffects(savedReduceEffects);
+
+    // Storage mode (default OFF on fresh installs / upgrades)
+    const savedUseStorage = localStorage.getItem('useIconStorage') === 'true';
+    useStorageToggle.checked = savedUseStorage;
+    applyUseStorage(savedUseStorage);
 }
 
 function saveSettings() {
@@ -2520,6 +2476,7 @@ function saveSettings() {
     localStorage.setItem('downloadAs', downloadAs.value);
     localStorage.setItem('reduceEffects', String(reduceEffectsToggle.checked));
     localStorage.setItem('itemsPerPage', String(ITEMS_PER_PAGE));
+    localStorage.setItem('useIconStorage', String(useIconStorage));
 }
 
 // --------------------------------------------------------------
@@ -2539,12 +2496,45 @@ function applyReduceEffects(enabled) {
     updateModeIndicator();
 }
 
+// --------------------------------------------------------------
+//  USE-STORAGE MODE – toggle Cache API vs. direct <img> loading
+// --------------------------------------------------------------
+function applyUseStorage(enabled) {
+    useIconStorage = enabled;
+
+    if (!useStorageToggle || !useStorageStatus || !iconStorageDetails) return;
+
+    if (enabled) {
+        useStorageStatus.textContent = 'On';
+        useStorageStatus.className = 'toggle-status on';
+        iconStorageDetails.classList.remove('disabled');
+        iconLimitInput.disabled = false;
+        cleanStorageBtn.disabled = false;
+
+        // Restore tick button to its natural state (only enabled if
+        // the input value differs from the currently applied limit).
+        const val = parseFloat(iconLimitInput.value);
+        iconLimitTick.disabled = (isNaN(val) || val === iconStorageLimitMB);
+    } else {
+        useStorageStatus.textContent = 'Off';
+        useStorageStatus.className = 'toggle-status off';
+        iconStorageDetails.classList.add('disabled');
+        iconLimitInput.disabled = true;
+        iconLimitTick.disabled = true;
+        cleanStorageBtn.disabled = true;
+    }
+}
+
 reduceEffectsToggle.addEventListener('change', function() {
     const enabled = this.checked;
     applyReduceEffects(enabled);
     localStorage.setItem('reduceEffects', String(enabled));
     saveSettings();
     updateStatusBar();
+
+    showToast(enabled
+        ? '🚀 Performance mode: ON'
+        : '✨ Performance mode: OFF');
 });
 
 [rangeName, rangeID, rangeDesc, rangeIcon].forEach(cb => cb.addEventListener('change', () => {
@@ -2744,6 +2734,23 @@ cleanStorageBtn.addEventListener('click', async () => {
     countedUrls.clear();
     renderStorageBar();
     showToast("Cleaned icon storage");
+});
+
+// ===== NEW: Storage mode toggle =====
+useStorageToggle.addEventListener('change', function() {
+    const enabled = this.checked;
+    applyUseStorage(enabled);
+    localStorage.setItem('useIconStorage', String(enabled));
+    saveSettings();
+
+    showToast(enabled
+        ? '💾 Use storage: ON'
+        : '⚡ Use storage: OFF');
+
+    // Re-render the grid so visible cards switch to the new loader
+    if (allItems.length > 0) {
+        applyFilters();
+    }
 });
 
 function recordImageSize(bytes) {
@@ -3416,6 +3423,55 @@ function loadImageForElement(imgEl, item, reloadBtn, modalToken = null) {
     const cacheName = 'ff-icons';
     const fallbackUrl = url.replace(CONFIG.CDN_BASE_URL, CONFIG.FALLBACK_CDN_BASE_URL);
 
+    // ============================================================
+    //  DIRECT MODE (Storage OFF) — native <img> loading.
+    //  Browser HTTP cache handles caching transparently (jsDelivr
+    //  sends max-age=31536000, immutable for @main/ paths).
+    //  No Cache API, no blob → objectURL round-trip.
+    //
+    //  Fallback chain: primary CDN → fallback CDN → icons/error.webp
+    // ============================================================
+    if (!useIconStorage) {
+        imgEl.loading = (modalToken !== null) ? 'eager' : 'lazy';
+        imgEl.decoding = 'async';
+
+        const markLoaded = () => {
+            if (modalToken !== null && modalToken !== modalImageLoadToken) return;
+            imgEl.classList.add('loaded');
+            if (!imgEl.classList.contains('is-fallback')) {
+                reloadBtn.classList.remove('visible');
+                reloadBtn.style.display = 'none';
+            }
+        };
+
+        imgEl.onload = markLoaded;
+        imgEl.onerror = () => {
+            if (modalToken !== null && modalToken !== modalImageLoadToken) return;
+            // First failure: retry once on the fallback CDN
+            if (imgEl.dataset.fbTried !== 'true') {
+                imgEl.dataset.fbTried = 'true';
+                imgEl.src = fallbackUrl;
+                return;
+            }
+            // Both CDNs failed → local error.webp placeholder
+            imgEl.src = CONFIG.FALLBACK_IMAGE_URL;
+            imgEl.classList.add('is-fallback');
+            reloadBtn.classList.add('visible');
+            reloadBtn.style.display = 'flex';
+            imgEl.classList.add('loaded');
+        };
+
+        delete imgEl.dataset.fbTried;
+        imgEl.classList.remove('is-fallback');
+        imgEl.src = url;
+        return;
+    }
+
+    // ============================================================
+    //  STORAGE MODE (Storage ON) — original Cache API pipeline.
+    //  Unchanged. Provides offline access, storage-bar tracking,
+    //  and auto-clean support.
+    // ============================================================
     loadImageWithRetry(url, { fallbackUrl, cacheName })
         .then(async ({ blob, fromCache }) => {
             // ----- FIX #2: Stale modal guard -----
@@ -3442,8 +3498,8 @@ function loadImageForElement(imgEl, item, reloadBtn, modalToken = null) {
 
             imgEl.onload = markLoaded;
             imgEl.onerror = (ev) => {
-                const fallbackUrl = getFallbackUrl(ev);
-                imgEl.src = fallbackUrl;
+                const fallback = getFallbackUrl(ev);
+                imgEl.src = fallback;
                 imgEl.classList.add('is-fallback');
                 reloadBtn.classList.add('visible');
                 reloadBtn.style.display = 'flex';
@@ -4054,6 +4110,47 @@ async function openPerformanceModeModal() {
     loadPerformanceModeImage();
 }
 
+// ----- Storage Mode Info Modal -----
+async function openStorageModeModal() {
+    const modal = document.getElementById('reportModal');
+    const title = document.getElementById('reportTitle');
+    const content = document.getElementById('reportContent');
+    const footer = document.getElementById('reportFooter');
+
+    // Use tutorial-mode styling so headings render purple and lists
+    // render as proper disc-bulleted items with purple bullets.
+    content.classList.remove('whatsnew-mode');
+    content.classList.add('tutorial-mode');
+
+    title.textContent = 'Use Storage';
+
+    content.innerHTML = `
+        <h3>Pros of using storage</h3>
+        <ul>
+            <li><strong>Guaranteed caching:</strong> previously loaded images are always served from the local cache, saving data on repeat visits.</li>
+            <li><strong>Full offline support:</strong> images load from the cache even without an internet connection.</li>
+            <li><strong>Reliable error placeholders:</strong> proper fallback images appear whenever a CDN fails.</li>
+        </ul>
+
+        <h3>Cons of using storage</h3>
+        <ul>
+            <li><strong>Slower loading:</strong> every image passes through the JavaScript cache pipeline before rendering, so loading speed can be slower than native CDN caching.</li>
+        </ul>
+    `;
+
+    footer.innerHTML = `
+        <button class="whatsnew-close-btn" onclick="closeModal('reportModal')" style="background: var(--glow); border: none; color: #fff; padding: 6px 18px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(168, 66, 255, 0.4);">
+            CLOSE
+        </button>
+    `;
+
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    if (!activeModalStack.includes('reportModal')) {
+        activeModalStack.push('reportModal');
+    }
+}
+
 async function loadPerformanceModeImage() {
     const img = document.getElementById('perfImage');
     const spinner = document.getElementById('perfSpinner');
@@ -4433,6 +4530,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('performanceInfoBtn')?.addEventListener('click', function(e) {
         e.stopPropagation();
         openPerformanceModeModal();
+    });
+    document.getElementById('storageInfoBtn')?.addEventListener('click', function(e) {
+        e.stopPropagation();
+        openStorageModeModal();
     });
 
     // Ensure catalog tab is active on load (the HTML already has it, but just in case)
