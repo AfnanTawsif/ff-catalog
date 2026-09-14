@@ -123,7 +123,7 @@ The database and icons are **updated regularly** – either when new items are a
 
 Want to run your own instance or contribute? Here’s everything you need:
 
-⚠️ Important: Starting from v2.0.0, builds include integration with the FF Profiles project, which remains private for security reasons. If you want to work exclusively on the open-source catalog, a catalog-only version (v1.3.3) is available in the "WebApp" folder.
+⚠️ Important: Starting from v2.0.0, builds include integration with the FF Profiles project, which remains private for security reasons. But the FF Catalog project will always remain open source.
 
 ### 1. Fork the Repository
 
