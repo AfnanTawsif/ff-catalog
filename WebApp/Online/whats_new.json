@@ -1,5 +1,11 @@
 [
   {
+    "version": "v2.0.5",
+    "logs": [
+      "Updated databse & icons link",
+    ]
+  },
+  {
     "version": "v2.0.4",
     "logs": [
       "Removed unnecessary sleep time for faster icon loading",
