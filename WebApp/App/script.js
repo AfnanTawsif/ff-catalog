@@ -23,11 +23,11 @@
 
 const CONFIG = {
     WEBSITE_URL: '',
-    CDN_BASE_URL: 'https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/Item-webp/',
-    FALLBACK_CDN_BASE_URL: 'https://cdn.statically.io/gh/AfnanTawsif/ff-catalog@main/Item-webp/',
+    CDN_BASE_URL: 'https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/Item-icons/',
+    FALLBACK_CDN_BASE_URL: 'https://cdn.statically.io/gh/AfnanTawsif/ff-catalog@main/Item-icons/',
 
-    DATABASE_URL: 'https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/database.msgpack.gz',
-    FALLBACK_DATABASE_URL: 'https://cdn.statically.io/gh/AfnanTawsif/ff-catalog@main/database.msgpack.gz',
+    DATABASE_URL: 'https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/item-data.msgpack.gz',
+    FALLBACK_DATABASE_URL: 'https://cdn.statically.io/gh/AfnanTawsif/ff-catalog@main/item-data.msgpack.gz',
 
     WHATS_NEW_URL: 'https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/WebApp/Online/whats_new.json',
     FALLBACK_WHATS_NEW_URL: 'https://cdn.statically.io/gh/AfnanTawsif/ff-catalog@main/WebApp/Online/whats_new.json',
@@ -2243,8 +2243,8 @@ document.getElementById('findFiltersBtn').addEventListener('click', async () => 
 
             if (data.tree && Array.isArray(data.tree)) {
                 data.tree.forEach(file => {
-                    if (file.path.startsWith('Item-webp/') && file.path.endsWith('.webp')) {
-                        const filename = file.path.replace('Item-webp/', '').replace('.webp', '');
+                    if (file.path.startsWith('Item-icons/') && file.path.endsWith('.webp')) {
+                        const filename = file.path.replace('Item-icons/', '').replace('.webp', '');
                         repoImages.add(filename);
                     }
                 });

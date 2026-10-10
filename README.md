@@ -1,5 +1,5 @@
 ![Netlify](https://img.shields.io/badge/dynamic/regex?url=https://raw.githubusercontent.com/AfnanTawsif/ff-catalog/main/WebApp/App/sw.js&search=const%20CACHE_NAME%20%3D%20'ff-catalog-app-(v%5Cd%2B%5C.%5Cd%2B%5C.%5Cd%2B)'&replace=%241&label=Netlify&color=blue&logo=netlify&logoColor=white)
-[![Database](https://img.shields.io/badge/Database-2026--09--14-2e7d32?logo=databricks&logoColor=white)](https://github.com/AfnanTawsif/ff-catalog/blob/main/database.msgpack.gz)
+[![Database](https://img.shields.io/badge/Database-2026--09--14-2e7d32?logo=databricks&logoColor=white)](https://github.com/AfnanTawsif/ff-catalog/blob/main/item-data.msgpack.gz)
 [![GitHub Stars](https://img.shields.io/github/stars/AfnanTawsif/ff-catalog?style=social)](https://github.com/AfnanTawsif/ff-catalog)
 
 ## 🎮 Free Fire Catalog
@@ -88,16 +88,16 @@ The app checks for a new database every 24 hours, and you can force a sync anyti
 You can directly embed any Free Fire item icon using the following URL pattern:
 
 ```text
-https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/Item-webp/{itemID}.webp
+https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/Item-icons/{itemID}.webp
 ```
 
 Replace `{itemID}` with the numeric item ID (e.g., `907092607`).
 
 **Example:**
 
-![Example Icon](https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/Item-webp/907092607.webp)
+![Example Icon](https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/Item-icons/907092607.webp)
 
-`https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/Item-webp/907092607.webp`
+`https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/Item-icons/907092607.webp`
 
 All images are served with optimal caching headers via jsDelivr.
 
@@ -108,11 +108,11 @@ All images are served with optimal caching headers via jsDelivr.
 The database and icons are maintained separately from the WebApp code.
 
 **Database**:
-  [`https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/database.msgpack.gz`](https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/database.msgpack.gz)
+  [`https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/item-data.msgpack.gz`](https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/item-data.msgpack.gz)
   - Original source: [SOURCES.md](./SOURCES.md)
 
 **WEBP Icons:**
-  [`https://github.com/AfnanTawsif/ff-catalog/tree/main/Item-webp`](https://github.com/AfnanTawsif/ff-catalog/tree/main/Item-webp)
+  [`https://github.com/AfnanTawsif/ff-catalog/tree/main/Item-icons`](https://github.com/AfnanTawsif/ff-catalog/tree/main/Item-icons)
   - Original source: [SOURCES.md](./SOURCES.md)
 
 The database and icons are **updated regularly** – either when new items are added in the source repository or when I manually curate missing assets.
@@ -163,8 +163,8 @@ ff-catalog/
 │       ├── tutorial<number>.webp    # Images used inside tutorial.md
 │       ├── performance-mode.webp    # Info image for performance mode
 │       └── author.jpg               # Author avatar
-├── Item-webp/                       # All item icons (WEBP, named by item ID)
-├── database.msgpack.gz               # Compressed database
+├── Item-icons/                       # All item icons (WEBP, named by item ID)
+├── item-data.msgpack.gz               # Compressed database
 ├── README.md                         # This file
 ├── SOURCES.md                        # Sources & Credits for database & icons
 └── LICENSE                           # MIT License
@@ -179,8 +179,8 @@ Example:
 ```js
 const CONFIG = {
     WEBSITE_URL: '',                       // Your live site URL
-    CDN_BASE_URL: '.../Item-webp/',              // Base for item icons
-    DATABASE_URL: '.../database.msgpack.gz',
+    CDN_BASE_URL: '.../Item-icons/',              // Base for item icons
+    DATABASE_URL: '.../item-data.msgpack.gz',
     FALLBACK_IMAGE_URL: 'icons/error.svg',
     GITHUB_REPO_URL: '...',                // Your repo URL
     GITHUB_API_TREE_URL: '.../git/trees/main?recursive=1',
@@ -194,7 +194,7 @@ Update these to point to your own fork and CDN endpoints.
 
 ### 5. Updating Icons
 
-Place new item icon WEBPs in the `Item-webp/` folder, named with the item ID (e.g., `123456789.webp`).
+Place new item icon WEBPs in the `Item-icons/` folder, named with the item ID (e.g., `123456789.webp`).
 
 If you need to generate app icons for the WebApp (PWA), use [maskable.app](https://maskable.app/) to create `icon-192.png`, `icon-512.png`, etc., and place them in `WebApp/App/icons/`.
 
@@ -230,7 +230,7 @@ Example of json format:
 ]
 ```
 
-**Important:** After updating `database.msgpack.gz`, purge the jsDelivr cache to make sure users get the latest update immediately.  To purge your cdn link, visit: 
+**Important:** After updating `item-data.msgpack.gz`, purge the jsDelivr cache to make sure users get the latest update immediately.  To purge your cdn link, visit: 
 
  [jsDelivr purging tool](https://www.jsdelivr.com/tools/purge)
 

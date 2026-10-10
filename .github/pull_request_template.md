@@ -7,7 +7,7 @@ Please check the type of change your PR introduces:
 - [ ] **Bug fix** – Fixes a bug in the WebApp.
 - [ ] **New feature** – Adds a new feature or improvement to the WebApp.
 - [ ] **Icon update** – Adds, replaces, or removes item icons in the `PNG/` folder.
-- [ ] **Database update** – Updates `database.msgpack.gz` with new or corrected item data.
+- [ ] **Database update** – Updates `item-data.msgpack.gz` with new or corrected item data.
 - [ ] **Documentation** – Updates README, CONTRIBUTING, or other docs.
 - [ ] **Other** – Please describe below.
 

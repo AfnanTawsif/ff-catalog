@@ -24,17 +24,17 @@ Please read the following guidelines before submitting any changes.
 
 ### Where to place icons
 
-All item icons are stored in the `Item-webp/` folder at the root of the repository. Each icon is named after its item ID (e.g., `101000001.webp`).
+All item icons are stored in the `Item-icons/` folder at the root of the repository. Each icon is named after its item ID (e.g., `101000001.webp`).
 
 ### How to add or update an icon
 
 1. **Locate the missing or outdated icon.**
 2. **Create or download a WEBP image** – ideally **218x218 px**.
 3. **Name it exactly as the item ID** – e.g., `907092607.webp`.
-4. **Place it in the `Item-webp/` folder**.
+4. **Place it in the `Item-icons/` folder**.
 5. **Commit and push** – open a pull request.
 
-> **Note:** The app uses the CDN URL `https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/Item-webp/{itemID}.webp`. After your PR is merged, the CDN cache will automatically update (may take a few minutes).
+> **Note:** The app uses the CDN URL `https://cdn.jsdelivr.net/gh/AfnanTawsif/ff-catalog@main/Item-icons/{itemID}.webp`. After your PR is merged, the CDN cache will automatically update (may take a few minutes).
 
 ---
 
@@ -42,7 +42,7 @@ All item icons are stored in the `Item-webp/` folder at the root of the reposito
 
 ### Database format
 
-The database is a **MessagePack** file (`database.msgpack.gz`). It is a gzipped binary representation of a JSON array of items. Each item object should have at least first 3 keys listed here-
+The database is a **MessagePack** file (`item-data.msgpack.gz`). It is a gzipped binary representation of a JSON array of items. Each item object should have at least first 3 keys listed here-
 
 ```json
 {
@@ -64,7 +64,7 @@ Additional fields are allowed.
 2. **Update the `updated_on` field** – the first element of the array should be an object with `updated_on` set to the current date in `YYYY-MM-DD` format (e.g., `"updated_on": "2026-08-13"`).
 3. **Convert JSON to MessagePack** – using a tool like conventro.com or the msgpack CLI.
 4. **Compress with GZIP** – use maximum compression to reduce file size.
-5. **Replace `database.msgpack.gz`** at the root of the repository.
+5. **Replace `item-data.msgpack.gz`** at the root of the repository.
 6. **Commit and push** – open a pull request.
 
 > **Important:** After the PR is merged, purge the jsDelivr cache using the purge tool to ensure users get the latest version immediately.
